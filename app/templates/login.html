@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+	<section class="section">
+
+		<article id="Home">
+
+			<h1> Log in </h1>
+
+        	<h3 style="margin-bottom: 15px;"> Please enter your login credentials </h3>
+
+        	<form action="{{ url_for('login') }}" method="POST">
+            	{{ login_form.hidden_tag() }}
+                {{ login_form.username.label }}
+                {{ login_form.username}}
+                {{ login_form.password.label }}
+                {{ login_form.password}}
+				<div>
+                {{ login_form.submit(class_="registerbtn") }}
+				</div>
+			</form>
+        
+        	<p style="text-align: center; margin-top: 20px;"> Not registered? <a href="{{ url_for('signin') }}"> Create an account </a></p>
+		</article>
+
+	</section>
+	
+{% endblock %}

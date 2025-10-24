@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+	<section class="section">
+
+		<article id="Home">
+
+			<h1> {{ product.name }} {{product.price }} $</h1>
+
+			<p style="text-align: center;"> {{ product.description }} </p>
+
+			<img class="Grafika" src="{{ url_for('static', filename = 'Product' + product.product_id|string + '.jpg')}}" alt="Product">
+
+			{% if current_user.is_authenticated %}
+			<form action="{{ url_for('addToCart', id = product.product_id)}}" method="post">
+			{% else %}
+			<form action="{{ url_for('login') }}">
+			{% endif %}
+				<button name="add" value="add">Add to cart</button>
+			</form>
+
+		</article>
+
+	</section>
+
+{% endblock %}

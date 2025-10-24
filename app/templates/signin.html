@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+	<section class="section">
+
+		<article id="Home">
+			
+			<form action="{{ url_for('signin') }}" method="POST">
+
+				<div class="register">
+
+					{{ registration_form.hidden_tag() }}
+					{{ registration_form.username.label }}
+					{{ registration_form.username}}
+					{% for error in registration_form.username.errors %}
+            		<span style="color: red;">[{{ error }}]</span>
+            		{% endfor %}
+					{{ registration_form.email.label }}
+					{{ registration_form.email}}
+					{% for error in registration_form.email.errors %}
+            		<span style="color: red;">[{{ error }}]</span>
+            		{% endfor %}
+					{{ registration_form.password.label }}
+					{{ registration_form.password}}
+					{% for error in registration_form.password.errors %}
+            		<span style="color: red;">[{{ error }}]</span>
+            		{% endfor %}
+					{{ registration_form.password2.label }}
+					{{ registration_form.password2}}
+					{% for error in registration_form.password2.errors %}
+            		<span style="color: red;">[{{ error }}]</span>
+            		{% endfor %}
+					{{ registration_form.submit(class_="registerbtn") }}
+				
+				</div>
+			  
+			</form> 
+
+		</article>
+
+	</section>
+	
+{% endblock %}

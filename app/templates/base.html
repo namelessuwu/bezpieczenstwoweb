@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="pl">
+
+<head>
+
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width; initial-scale=1.0; maximum-scale=1.0; minimum-scale=1.0; user-scalable=no; target-densityDpi=device-dpi">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+	<script src="https://kit.fontawesome.com/a076d05399.js"></script>
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+	<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300&display=swap" rel="stylesheet">
+	<link rel="icon" href="{{ url_for('static', filename='logoMitu.ico') }}">
+	<link rel="shortcut icon" href="{{ url_for('static', filename='logoMitu.ico') }}" type="image/x-icon">
+	<title>Studio graficzne MITU</title>
+	<meta name="author" content="Piotr Kupczyk/Wiktor Grochola">
+	<meta name="description" content="Strona sklepu.">
+	<meta name="keywords" content="MITU, Mitu, Sklep, Grafika">
+
+</head>
+
+<body>
+
+    <div class="wrapper">
+    
+        <header class="header">
+    
+            <img class="MITU" id="MITU" src="{{ url_for('static', filename='logoMitu.png') }}" alt="MITU - header">
+    
+        </header>
+
+        <nav class="nav">
+            <a class="nawigacja" href="{{ url_for('index') }}"> Home </a>
+            {% if request.path == '/' or request.path == '/index' %}
+            <a class="nawigacja" href="#Oferta"> Products </a>
+            {% endif %}
+            {% if current_user.is_anonymous %}
+                <a class="nawigacja" href="{{ url_for('signin') }}"> Sign in </a>
+                <a class="nawigacja" href="{{ url_for('login') }}"> Log in </a>
+            {% endif %}
+            {% if current_user.is_authenticated and not current_user.username == "admin" %}
+                {% if request.path != '/checkout' %}
+                <a class="nawigacja aktywna" href="{{ url_for('checkout') }}"> Checkout </a>
+                {% endif %}
+                {% if not request.path.startswith('/orders/') %}
+                    <a class="nawigacja" href="{{ url_for('orders') }}"> Orders </a>
+                {% endif %}
+            <a class="nawigacja" href="{{ url_for('logout') }}"> Log out </a>
+            {% endif %}
+            {% if current_user.username == "admin" %}
+                    <a class="nawigacja" href="{{ url_for('admin') }}"> Admin </a>
+                    <a class="nawigacja" href="{{ url_for('logout') }}"> Log out </a>
+            {% endif %}
+        </nav>
+        
+        {% block content %} {% endblock %}
+
+        <footer>
+	
+            <p> 272180/272275 </p>
+    
+            <div class="ikony">
+                <div class="pojemnik_footer">
+    
+                    <i class="fa fa-twitter"></i>
+                    <i class="fa fa-facebook"></i>
+                    <i class="fa fa-google-plus"></i>
+                    <i class="fa fa-linkedin"></i>
+                    <i class="fa fa-pinterest"></i>
+    
+                </div>
+            </div>
+            
+        </footer>
+    
+    </div>
+    
+    <a href="#MITU" class="arrowUp"><i class="fas fa-angle-up" aria-hidden="true"></i></a>
+    
+</body>
+    
+</html>

@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+	<section class="section">
+
+		<article id="Home">
+
+			<h1> About us: </h1>
+
+			<h2> We love flasks! </h2>
+
+		</article>
+
+	</section>
+
+	<section class="section">
+
+		<article id="Oferta">
+
+			<h1> All products </h1>
+
+			{% for product in products %}
+				<a href="{{ url_for('product', id = product.product_id)}}"> <img class="Grafika" src="{{ url_for('static', filename = 'Product' + product.product_id|string + '.jpg')}}" alt="Produkt"></a>
+				<p class="produkt"> {{ product.name }} {{product.price }} $  </p>
+			{% endfor %}
+		
+		</article>
+
+	</section>
+
+{% endblock %}

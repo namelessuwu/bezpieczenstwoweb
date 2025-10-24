@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<section class="section">
+
+	<article id="Home">
+
+		<h1> Your cart </h1>
+		{% if session['cart'] %}
+		{% for product in session['cart'] %}
+			<p> {{ session['cart'][product]['name'] }}, Quantity: {{ session['cart'][product]['quantity'] }}, Total: {{ session['cart'][product]['price'] }} $ </p>
+		{% endfor %}
+		<form action="{{ url_for('order') }}" method="POST">
+			{{ form.hidden_tag() }}
+			{{ form.address.label }}
+			{{ form.address}}
+			{{ form.zip_code.label }}
+			{{ form.zip_code}}
+			{{ form.phone_number.label }}
+			{{ form.phone_number}}
+			<div>
+			{{ form.submit(class_="registerbtn") }}
+			</div>
+		</form>
+		{% else %}
+			<p>Your cart is empty!</p>
+		{% endif %}
+
+	</article>
+
+</section>
+
+{% endblock %}

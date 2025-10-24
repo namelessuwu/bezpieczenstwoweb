@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+	<section class="section">
+
+		<article id="Home">
+
+			<h1> Your orders: </h1>
+
+			{% if orders %}
+			{% for order in orders %}
+			<p> Order nr {{ order.order_id}}, Total: {{ order.total_amount }} $, Address: {{ order.address }}, Phone number: {{ order.phone_number }} </p>
+			{% endfor %}
+			{% else %}
+			<p>You haven't made any orders!</p>
+			{% endif %}
+
+		</article>
+
+	</section>
+	
+{% endblock %}
