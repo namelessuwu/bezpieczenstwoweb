@@ -4,7 +4,7 @@ import os
 
 def conn_to_db():
     conn = mysql.connector.connect(
-        user="root",
+        user=os.environ.get('MYSQL_USER'),
         password=os.environ.get('MYSQL_ROOT_PASSWORD'),
         host=os.environ.get('MYSQL_HOST'),
         port=3306,
