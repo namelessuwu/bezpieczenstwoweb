@@ -2,7 +2,7 @@ from flask import render_template, request, redirect, url_for, session, abort
 from app import app
 from connector import fetch, insert
 from models import Product, User, Order
-from forms import LoginForm, RegistrationForm, OrderForm, ResetPasswordRequestForm, ResetPasswordForm
+from forms import LoginForm, RegistrationForm, OrderForm, SubmitForm
 from flask_login import current_user, login_user, logout_user, login_required
 from datetime import datetime
 
@@ -17,10 +17,11 @@ def index():
 
 @app.route('/product/<int:id>')
 def product(id):
+    form = SubmitForm()
     product_data = fetch('one', "SELECT * FROM products WHERE product_id=%s", (id,))
     if product_data:
         product = Product(*product_data)
-        return render_template('product.html', product=product)
+        return render_template('product.html', product=product, form=form)
     else:
         abort(404)
 
@@ -118,14 +119,58 @@ def order():
     return redirect(url_for('index'))
 
 
-@app.route('/admin')
+@app.route('/admin/orders')
 @login_required
-def admin():
+def admin_orders():
     if current_user.is_authenticated:
         if current_user.username == 'admin':
+            form = SubmitForm()
             orders = None
             order_data = fetch('all', 'SELECT * FROM orders')
             if order_data:
                 orders = [Order(*order) for order in order_data]
-            return render_template('admin.html', orders=orders)
+            return render_template('admin_orders.html', orders=orders, form=form)
+    abort(403)
     return redirect(url_for('index'))
+
+
+@app.route('/admin/users')
+@login_required
+def admin_users():
+    if current_user.is_authenticated:
+        if current_user.username == 'admin':
+            form = SubmitForm()
+            users = None
+            user_data = fetch('all', 'SELECT * FROM users')
+            if user_data:
+                users = [User(*user) for user in user_data]
+            return render_template('admin_users.html', users=users, form=form)
+    abort(403)
+    return redirect(url_for('index'))
+
+
+@app.route('/admin/delete_order/<int:order_id>', methods=['POST'])
+@login_required
+def delete_order(order_id):
+    if current_user.username == 'admin':
+        order_data = fetch('one', "SELECT * FROM orders WHERE order_id=%s", (order_id,))
+        if order_data:
+            insert("DELETE FROM orders WHERE order_id=%s", (order_id,))
+            return redirect(url_for('admin_orders'))
+        abort(404)
+    else:
+        abort(403)
+
+
+@app.route('/admin/delete_user/<int:user_id>', methods=['POST'])
+@login_required
+def delete_user(user_id):
+    if current_user.username == 'admin':
+        user_data = fetch('one', "SELECT * FROM users WHERE user_id=%s", (user_id,))
+        if user_data:
+            insert("DELETE FROM orders WHERE user_id=%s", (user_id,))
+            insert("DELETE FROM users WHERE user_id=%s", (user_id,))
+            return redirect(url_for('admin_users'))
+        abort(404)
+    else:
+        abort(403)

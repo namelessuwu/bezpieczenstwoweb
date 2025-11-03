@@ -14,6 +14,7 @@
             <button type="submit" form="deleteForm{{ user.user_id }}" class="registerbtn">Delete</button>
             </p>
             <form id="deleteForm{{ user.user_id }}" action="{{ url_for('delete_user', user_id=user.user_id) }}" method="post" style="display:none;">
+            {{ form.hidden_tag() }}
             </form>
 			{% endfor %}
 			{% else %}

@@ -15,7 +15,7 @@ class RegistrationForm(FlaskForm):
     email = StringField("Email address", validators=[DataRequired(), Email()])
     password = PasswordField("Password", validators=[DataRequired(), Length(min=8, message="Your password must be at least 8 characters long.")])
     password2 = PasswordField("Repeat your password", validators=[DataRequired(), EqualTo("password")])
-    submit = SubmitField("Sign in")
+    submit = SubmitField("Sign up")
 
     def validate_username(self, username):
         user_data = fetch("one", "SELECT username FROM users WHERE username=%s", (username.data,))
@@ -45,3 +45,7 @@ class ResetPasswordForm(FlaskForm):
     password2 = PasswordField(
         'Repeat Password', validators=[DataRequired(), EqualTo('password')])
     submit = SubmitField('Reset Password')
+
+
+class SubmitForm(FlaskForm):
+    submit = SubmitField('Submit')

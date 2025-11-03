@@ -14,6 +14,7 @@
             <button type="submit" form="deleteForm{{ order.order_id }}" class="registerbtn">Delete</button>
             </p>
             <form id="deleteForm{{ order.order_id }}" action="{{ url_for('delete_order', order_id=order.order_id) }}" method="post" style="display:none;">
+            {{ form.hidden_tag() }}
             </form>
 			{% endfor %}
 			{% else %}

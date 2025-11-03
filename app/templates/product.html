@@ -18,6 +18,7 @@
 			<form action="{{ url_for('login') }}">
 			{% endif %}
 				<button name="add" value="add">Add to cart</button>
+                {{ form.hidden_tag() }}
 			</form>
 
 		</article>

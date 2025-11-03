@@ -12,6 +12,7 @@ def conn_to_db():
     )
     return conn
 
+
 def fetch(quantity, query, params=()):
     conn = conn_to_db()
     cur = conn.cursor()
