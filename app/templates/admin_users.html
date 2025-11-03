@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+	<section class="section">
+
+		<article id="Home">
+
+			<h1> List of all users: </h1>
+
+			{% if users %}
+			{% for user in users %}
+			<p> User nr {{ user.user_id }}, Username: {{ user.username }}, Email: {{ user.email }}
+            <button type="submit" form="deleteForm{{ user.user_id }}" class="registerbtn">Delete</button>
+            </p>
+            <form id="deleteForm{{ user.user_id }}" action="{{ url_for('delete_user', user_id=user.user_id) }}" method="post" style="display:none;">
+            </form>
+			{% endfor %}
+			{% else %}
+			<p>No users!</p>
+			{% endif %}
+
+		</article>
+
+	</section>
+	
+{% endblock %}

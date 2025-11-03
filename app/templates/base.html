@@ -34,7 +34,7 @@
             <a class="nawigacja" href="#Oferta"> Products </a>
             {% endif %}
             {% if current_user.is_anonymous %}
-                <a class="nawigacja" href="{{ url_for('signin') }}"> Sign in </a>
+                <a class="nawigacja" href="{{ url_for('signin') }}"> Sign up </a>
                 <a class="nawigacja" href="{{ url_for('login') }}"> Log in </a>
             {% endif %}
             {% if current_user.is_authenticated and not current_user.username == "admin" %}
@@ -47,7 +47,8 @@
             <a class="nawigacja" href="{{ url_for('logout') }}"> Log out </a>
             {% endif %}
             {% if current_user.username == "admin" %}
-                    <a class="nawigacja" href="{{ url_for('admin') }}"> Admin </a>
+                    <a class="nawigacja" href="{{ url_for('admin_users') }}"> Users </a>
+                    <a class="nawigacja" href="{{ url_for('admin_orders') }}"> Orders </a>
                     <a class="nawigacja" href="{{ url_for('logout') }}"> Log out </a>
             {% endif %}
         </nav>

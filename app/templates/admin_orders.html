@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+	<section class="section">
+
+		<article id="Home">
+
+			<h1> List of all orders: </h1>
+
+			{% if orders %}
+			{% for order in orders %}
+			<p> Order nr {{ order.order_id}}, Total: {{ order.total_amount }} $, Address: {{ order.address }}, Phone number: {{ order.phone_number }}
+            <button type="submit" form="deleteForm{{ order.order_id }}" class="registerbtn">Delete</button>
+            </p>
+            <form id="deleteForm{{ order.order_id }}" action="{{ url_for('delete_order', order_id=order.order_id) }}" method="post" style="display:none;">
+            </form>
+			{% endfor %}
+			{% else %}
+			<p>No orders!</p>
+			{% endif %}
+
+		</article>
+
+	</section>
+	
+{% endblock %}
