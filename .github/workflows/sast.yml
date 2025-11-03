@@ -58,7 +58,8 @@ jobs:
            
             const resp = await github.rest.codeScanning.listAlertsForRepo({
               owner,
-              repo
+              repo,
+              state: 'open'
             });
 
             const alerts = resp.data || [];
