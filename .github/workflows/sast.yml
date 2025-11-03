@@ -45,8 +45,9 @@ jobs:
         with:
           node-version: '20'
 
-- name: Install github-script dependencies
-  run: npm install @actions/core
+      - name: Install github-script dependencies
+        run: npm install @actions/core
+        
       - name: Query Code Scanning alerts and create issue on HIGH/CRITICAL
         uses: actions/github-script@v6
         with:
