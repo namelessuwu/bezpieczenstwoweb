@@ -91,3 +91,4 @@ jobs:
             } else {
               console.log("No high/critical CodeQL alerts found.");
             }
+
