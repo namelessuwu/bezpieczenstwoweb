@@ -29,7 +29,7 @@ jobs:
       - name: Run CodeQL Analysis
         uses: github/codeql-action/analyze@v3
 
-          triage:
+  triage:
     name: Create security issue if CodeQL finds high/critical alerts
     runs-on: ubuntu-latest
     needs: analyze
@@ -55,19 +55,15 @@ jobs:
           script: |
             const owner = context.repo.owner;
             const repo = context.repo.repo;
-            // pobierz alerty (open)
-            // Uwaga: paginacja przy bardzo dużej liczbie alertów może być potrzebna
+           
             const resp = await github.rest.codeScanning.listAlertsForRepo({
               owner,
-              repo,
-              // opcjonalnie: ref: context.sha, state: 'open'
+              repo
             });
 
             const alerts = resp.data || [];
-            // filterujemy po severity (w zależności od wersji API pole może być rule.severity lub rule.security_severity)
             const criticalOrHigh = alerts.filter(a => {
               const sev = a.rule && (a.rule.security_severity || a.rule.severity || a.rule.level);
-              // możliwe wartości: "error"/"critical"/"high"/"medium"/"low" zależnie od danych
               if (!sev) return false;
               const s = String(sev).toLowerCase();
               return s === 'critical' || s === 'high' || s === 'error';
@@ -90,7 +86,6 @@ jobs:
                 labels: ['security','codeql','urgent']
               });
 
-              // opcjonalnie: zakończ job z błędem, jeśli chcesz failować pipeline:
               core = require('@actions/core');
               core.setFailed(`${criticalOrHigh.length} high/critical CodeQL alerts found`);
             } else {
