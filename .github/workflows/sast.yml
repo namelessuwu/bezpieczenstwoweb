@@ -6,7 +6,7 @@ on:
   pull_request:
     branches: [main]
   schedule:
-    - cron: '0 7 * * 1' # skany raz na tydzień
+    - cron: '0 7 * * 1'
 
 jobs:
   analyze:
@@ -15,71 +15,67 @@ jobs:
     permissions:
       security-events: write
     steps:
-      - name: Check repository
+      - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Initialize CodeQl
+      - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
         with:
           languages: python
 
-# przyda się, jeśli będziemy mieli np. kontenery
       - name: Autobuild
         uses: github/codeql-action/autobuild@v3
 
-      - name: Run Analysis
+      - name: Run CodeQL Analysis
         uses: github/codeql-action/analyze@v3
-        
+
   triage:
-    name: Create security issue if CodeQL finds high/critical alerts
+    name: Create security issue if CodeQL finds critical alerts
     runs-on: ubuntu-latest
     needs: analyze
     permissions:
+      contents: read
       issues: write
       security-events: read
     steps:
-      - name: Check out repository (needed for context)
-        uses: actions/checkout@v4
-
-      - name: Query Code Scanning alerts and create issue on HIGH/CRITICAL
-        uses: actions/github-script@v5
+      - name: Set up Python
+        uses: actions/setup-python@v4
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const owner = context.repo.owner;
-            const repo = context.repo.repo;
-            const resp = await github.rest.codeScanning.listAlertsForRepo({
-              owner,
-              repo
-            });
+          python-version: '3.11'
 
-            const alerts = resp.data || [];
-            const criticalOrHigh = alerts.filter(a => {
-              const sev = a.rule && (a.rule.security_severity || a.rule.severity || a.rule.level);
-              if (!sev) return false;
-              const s = String(sev).toLowerCase();
-              return s === 'critical' || s === 'high' || s === 'error';
-            });
+      - name: Run Triage Script
+        run: |
+          pip install requests
+          python - << 'EOF'
+          import os
+          import requests
 
-            if (criticalOrHigh.length > 0) {
-              const sample = criticalOrHigh.slice(0, 10).map(x => {
-                const title = x.rule && (x.rule.id || x.rule.description || x.rule.name) || 'CodeQL finding';
-                const url = x.html_url || `https://github.com/${owner}/${repo}/security/code-scanning`;
-                return `- ${title} (severity: ${x.rule && (x.rule.security_severity || x.rule.severity)})\n  ${url}`;
-              }).join('\n');
+          token = os.environ['GITHUB_TOKEN']
+          owner, repo = os.environ['GITHUB_REPOSITORY'].split('/')
 
-              const body = `Automatyczny alert: znaleziono **${criticalOrHigh.length}** wysokiego/critical poziomu CodeQL findings.\n\nPrzykłady:\n\n${sample}\n`;
+          url = f"https://api.github.com/repos/{owner}/{repo}/code-scanning/alerts"
+          headers = {
+              "Authorization": f"Bearer {token}",
+              "Accept": "application/vnd.github+json"
+          }
 
-              await github.rest.issues.create({
-                owner,
-                repo,
-                title: `CodeQL: ${criticalOrHigh.length} HIGH/CRITICAL findings`,
-                body,
-                labels: ['security','codeql','urgent']
-              });
+          resp = requests.get(url, headers=headers)
+          alerts = resp.json()
 
-              core = require('@actions/core');
-              core.setFailed(`${criticalOrHigh.length} high/critical CodeQL alerts found`);
-            } else {
-              console.log("No high/critical CodeQL alerts found.");
-            }
+          critical_or_high = [a for a in alerts if a.get('rule', {}).get('security_severity', '').lower() in ['critical', 'high']]
+
+          if critical_or_high:
+              print(f"Found {len(critical_or_high)} HIGH/CRITICAL CodeQL alerts")
+              # Create issue
+              issue_url = f"https://api.github.com/repos/{owner}/{repo}/issues"
+              issue_data = {
+                  "title": f"🚨 CodeQL: {len(critical_or_high)} HIGH/CRITICAL findings",
+                  "body": "Automatic CodeQL findings check",
+                  "labels": ["security","codeql","urgent"]
+              }
+              r = requests.post(issue_url, json=issue_data, headers=headers)
+              print(f"Issue created: {r.json().get('html_url')}")
+          else:
+              print("No high/critical alerts found")
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
