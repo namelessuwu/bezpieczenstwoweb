@@ -28,3 +28,70 @@ jobs:
 
       - name: Run CodeQL Analysis
         uses: github/codeql-action/analyze@v3
+
+          triage:
+    name: Create security issue if CodeQL finds high/critical alerts
+    runs-on: ubuntu-latest
+    needs: analyze
+    permissions:
+      issues: write
+      security-events: read
+    steps:
+      - name: Check out repository (needed for context)
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+- name: Install github-script dependencies
+  run: npm install @actions/core
+      - name: Query Code Scanning alerts and create issue on HIGH/CRITICAL
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            // pobierz alerty (open)
+            // Uwaga: paginacja przy bardzo dużej liczbie alertów może być potrzebna
+            const resp = await github.rest.codeScanning.listAlertsForRepo({
+              owner,
+              repo,
+              // opcjonalnie: ref: context.sha, state: 'open'
+            });
+
+            const alerts = resp.data || [];
+            // filterujemy po severity (w zależności od wersji API pole może być rule.severity lub rule.security_severity)
+            const criticalOrHigh = alerts.filter(a => {
+              const sev = a.rule && (a.rule.security_severity || a.rule.severity || a.rule.level);
+              // możliwe wartości: "error"/"critical"/"high"/"medium"/"low" zależnie od danych
+              if (!sev) return false;
+              const s = String(sev).toLowerCase();
+              return s === 'critical' || s === 'high' || s === 'error';
+            });
+
+            if (criticalOrHigh.length > 0) {
+              const sample = criticalOrHigh.slice(0, 10).map(x => {
+                const title = x.rule && (x.rule.id || x.rule.description || x.rule.name) || 'CodeQL finding';
+                const url = x.html_url || `https://github.com/${owner}/${repo}/security/code-scanning`;
+                return `- ${title} (severity: ${x.rule && (x.rule.security_severity || x.rule.severity)})\n  ${url}`;
+              }).join('\n');
+
+              const body = `Automatyczny alert: znaleziono **${criticalOrHigh.length}** wysokiego/critical poziomu CodeQL findings.\n\nPrzykłady:\n\n${sample}\n`;
+
+              await github.rest.issues.create({
+                owner,
+                repo,
+                title: `CodeQL: ${criticalOrHigh.length} HIGH/CRITICAL findings`,
+                body,
+                labels: ['security','codeql','urgent']
+              });
+
+              // opcjonalnie: zakończ job z błędem, jeśli chcesz failować pipeline:
+              core = require('@actions/core');
+              core.setFailed(`${criticalOrHigh.length} high/critical CodeQL alerts found`);
+            } else {
+              console.log("No high/critical CodeQL alerts found.");
+            }
