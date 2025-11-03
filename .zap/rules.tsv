@@ -1,6 +1,3 @@
-# ZAP Scanning Rules Configuration
-# Format: id	threshold	[instance]
-
 # Ignore false positives for specific rules
 10038	OFF	# Content Security Policy (CSP) Header Not Set - handled by App Service
 10096	OFF	# Timestamp Disclosure - Unix timestamps are not sensitive
