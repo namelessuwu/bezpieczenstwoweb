@@ -29,15 +29,6 @@ jobs:
 
       - name: Run Analysis
         uses: github/codeql-action/analyze@v3
-
-  triage:
-    name: Create security issue if CodeQL finds critical alerts
-    runs-on: ubuntu-latest
-    needs: analyze
-    permissions:
-      issues: write
-      security-events: read
-    steps:
       - name: Create issue for CodeQL findings
         uses: github/codeql-action/upload-sarif@v3
         with:
