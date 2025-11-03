@@ -29,3 +29,57 @@ jobs:
 
       - name: Run Analysis
         uses: github/codeql-action/analyze@v3
+        
+  triage:
+    name: Create security issue if CodeQL finds high/critical alerts
+    runs-on: ubuntu-latest
+    needs: analyze
+    permissions:
+      issues: write
+      security-events: read
+    steps:
+      - name: Check out repository (needed for context)
+        uses: actions/checkout@v4
+
+      - name: Query Code Scanning alerts and create issue on HIGH/CRITICAL
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const resp = await github.rest.codeScanning.listAlertsForRepo({
+              owner,
+              repo
+            });
+
+            const alerts = resp.data || [];
+            const criticalOrHigh = alerts.filter(a => {
+              const sev = a.rule && (a.rule.security_severity || a.rule.severity || a.rule.level);
+              if (!sev) return false;
+              const s = String(sev).toLowerCase();
+              return s === 'critical' || s === 'high' || s === 'error';
+            });
+
+            if (criticalOrHigh.length > 0) {
+              const sample = criticalOrHigh.slice(0, 10).map(x => {
+                const title = x.rule && (x.rule.id || x.rule.description || x.rule.name) || 'CodeQL finding';
+                const url = x.html_url || `https://github.com/${owner}/${repo}/security/code-scanning`;
+                return `- ${title} (severity: ${x.rule && (x.rule.security_severity || x.rule.severity)})\n  ${url}`;
+              }).join('\n');
+
+              const body = `Automatyczny alert: znaleziono **${criticalOrHigh.length}** wysokiego/critical poziomu CodeQL findings.\n\nPrzykłady:\n\n${sample}\n`;
+
+              await github.rest.issues.create({
+                owner,
+                repo,
+                title: `CodeQL: ${criticalOrHigh.length} HIGH/CRITICAL findings`,
+                body,
+                labels: ['security','codeql','urgent']
+              });
+
+              core = require('@actions/core');
+              core.setFailed(`${criticalOrHigh.length} high/critical CodeQL alerts found`);
+            } else {
+              console.log("No high/critical CodeQL alerts found.");
+            }
