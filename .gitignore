@@ -4,3 +4,4 @@ key.pem
 cert.pem
 /app/venv/
 /app/__pycache__/
+.idea
