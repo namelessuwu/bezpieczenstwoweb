@@ -10,6 +10,31 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      
+      - name: show zap folder
+        run: |
+          echo ".zap files:"
+          ls -la .zap || true
+          echo "Show users section (no secrets):"
+          sed -n '1,200p' .zap/login-flask2.context | sed -n '/<users>/,/<\/users>/p' || true
+
+      - name: Context Setup - replace user/pass placeholders with secrets
+        env:
+          B64USER: ${{ secrets.B64USER }}
+          B64PASS: ${{ secrets.B64PASS }}
+        run: |
+          if [ ! -f .zap/login-flask2.context ]; then
+            echo "Context file .zap/login-flask2.context not found!"
+            exit 1
+          fi
+          echo "Replacing USER_PLACEHOLDER..."
+          sed -i "s|USER_PLACEHOLDER|${B64USER}|g" .zap/login-flask2.context
+          echo "Replacing PASS_PLACEHOLDER..."
+          sed -i "s|PASS_PLACEHOLDER|${B64PASS}|g" .zap/login-flask2.context
+          echo "Placeholders replaced (content not printed for security)."
+
+      - name: Show resulting users line (sanity, no secrets)
+        run: sed -n '/<users>/,/<\/users>/p' .zap/login-flask2.context | sed 's/^[^>]*>/>/;s/<\\/user.*$//' || true
 
       - name: Authenticated ZAP Full Scan
         uses: zaproxy/action-full-scan@v0.12.0
