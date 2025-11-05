@@ -18,6 +18,7 @@ jobs:
           context: ".zap/login-flask2.context"
           cmd_options: > 
             -U zapUser
+            -z "auth.loginurl=${{ secrets.TARGET_URL }}/login"
             -z "auth.username=${{ secrets.ZAP_USER }}"
             -z "auth.password=${{ secrets.ZAP_PASS }}"
             -r zap-auth-report.html
