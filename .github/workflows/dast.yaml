@@ -27,10 +27,10 @@ jobs:
             echo "Context file .zap/login-flask2.context not found!"
             exit 1
           fi
-          echo "Replacing USER_PLACEHOLDER..."
-          sed -i "s|USER_PLACEHOLDER|${B64USER}|g" .zap/login-flask2.context
+          echo "Replacing PLACEHOLDERUSER..."
+          sed -i "s|PLACEHOLDERUSER|${B64USER}|g" .zap/login-flask2.context
           echo "Replacing PASS_PLACEHOLDER..."
-          sed -i "s|PASS_PLACEHOLDER|${B64PASS}|g" .zap/login-flask2.context
+          sed -i "s|PLACEHOLDERPASSWORD|${B64PASS}|g" .zap/login-flask2.context
           echo "Placeholders replaced (content not printed for security)."
 
       - name: Show resulting users line (sanity, no secrets)
