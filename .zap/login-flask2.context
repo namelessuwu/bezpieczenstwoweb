@@ -66,10 +66,6 @@
                 <loginpageurl>https://flaskshop.online/login</loginpageurl>
             </form>
         </authentication>
-        <users>
-            <user>483;true;dGVzdC1kYXN0;2;;</user>
-        </users>
-        <forceduser>483</forceduser>
         <session>
             <type>0</type>
         </session>
@@ -84,3 +80,4 @@
         </authorization>
     </context>
 </configuration>
+
