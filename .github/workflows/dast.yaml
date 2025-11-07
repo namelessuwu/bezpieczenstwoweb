@@ -1,4 +1,4 @@
-name: ZAP Authenticated DAST
+name: ZAP Authenticated DAST 
 
 on:
   workflow_dispatch:
