@@ -1,0 +1,35 @@
+# .zap/plan.template.yml
+env:
+  contexts:
+  - name: login-flask
+    # this must be a valid regex; we'll replace the placeholder with the real host at runtime
+    includePaths:
+    - ^@@FLASKSHOP_URL_ESCAPED@@/.*$
+    authentication:
+      method: form
+      parameters:
+        loginPageUrl: @@FLASKSHOP_URL@@/login
+        loginRequestUrl: @@FLASKSHOP_URL@@/login
+        # ZAP uses {%username%} and {%password%} tokens in the login body
+        loginRequestBody: "username={%username%}&password={%password%}&submit=Log+in"
+      verification:
+        method: autodetect
+        pollFrequency: 60
+        pollUnits: requests
+        pollUrl: ""
+        pollPostData: ""
+    sessionManagement:
+      method: cookie
+    technology: {}
+    structure: {}
+    users:
+    - name: zap-user
+      credentials:
+        # we'll inject the actual username/password into these fields on the runner
+        username: @@ZAP_USER@@
+        password: @@ZAP_PASS@@
+  parameters: {}
+jobs:
+- type: activeScan
+  parameters: {}
+  policyDefinition: {}
