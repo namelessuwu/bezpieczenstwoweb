@@ -1,12 +1,11 @@
 type: Automation
 
-# Simple env var placeholders expected by ZAP AF
-env:
-  vars:
-    TARGET_URL: "${TARGET_URL}"
-    REPORT_NAME: "${REPORT_NAME:-zap-auth-report.html}"
+# top-level variables (reference container env vars)
+vars:
+  TARGET_URL: "${TARGET_URL}"
+  REPORT_NAME: "${REPORT_NAME:-zap-auth-report.html}"
 
-# contexts define scope and authentication
+# contexts define the scope and authentication
 contexts:
   - name: "CIContext"
     include:
