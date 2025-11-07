@@ -1,8 +1,7 @@
-name: DAST - ZAP Authenticated Full Scan (docker-run debug)
+name: DAST - ZAP Authenticated Full Scan (docker-run debug, fixed)
 
 on:
   workflow_dispatch:
-  workflow_call:
   push:
     branches: [ main ]
 
@@ -24,14 +23,10 @@ jobs:
 
       - name: Run ZAP docker with explicit envs and debug inside container
         env:
-          # These are *not* echoed; they are used in the docker command below.
           TARGET_URL: ${{ secrets.TARGET_URL }}
           ZAP_USER:    ${{ secrets.ZAP_USER }}
           ZAP_PASS:    ${{ secrets.ZAP_PASS }}
         run: |
-          # Run the ZAP container directly, explicitly passing secret values into docker.
-          # First the container checks whether each required env var is set (prints SET/EMPTY).
-          # Then it runs zap.sh -cmd -autorun pointing at your plan file.
           docker run --rm -v "$PWD":/zap/wrk:rw --network=host \
             -e TARGET_URL="${TARGET_URL}" \
             -e ZAP_USER="${ZAP_USER}" \
@@ -40,9 +35,9 @@ jobs:
             ghcr.io/zaproxy/zaproxy:stable \
             sh -c '\
               echo "=== inside-container env presence check ==="; \
-              for v in TARGET_URL ZAP_USER ZAP_PASS REPORT_NAME; do \
-                if [ -z "${!v}" ]; then echo "$v is EMPTY"; else echo "$v is SET"; fi; \
-              done; \
+              if [ -z "$TARGET_URL" ]; then echo "TARGET_URL is EMPTY"; else echo "TARGET_URL is SET"; fi; \
+              if [ -z "$ZAP_USER" ]; then echo "ZAP_USER is EMPTY"; else echo "ZAP_USER is SET"; fi; \
+              if [ -z "$ZAP_PASS" ]; then echo "ZAP_PASS is EMPTY"; else echo "ZAP_PASS is SET"; fi; \
               echo "=== running ZAP autorun ==="; \
               zap.sh -cmd -autorun /zap/wrk/.zap/plan.yml \
             '
