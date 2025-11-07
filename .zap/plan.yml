@@ -2,7 +2,7 @@ env:
   contexts:
   - name: login-flask
     urls: 
-    - https://flaskshop.online
+    - https://flaskshop.online/login
     includePaths:
     - ^https://flaskshop\.online/.*$
     authentication:
