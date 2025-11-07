@@ -1,44 +1,77 @@
+# .zap/plan.yml
 version: "2.1"
 
-# Correct top-level key is `environments` (plural)
-environments:
-  - name: default
-    contexts:
-      - name: flaskshop
-        include:
-          - "${FLASKSHOP_URL}.*"   # URL included in the context
+# Use top-level 'env' (many examples/autogen templates use this form)
+env:
+  # List of contexts for this environment:
+  contexts:
+    - name: flaskshop
+      # Top-level URL(s) — everything under these will be considered inside the context
+      urls:
+        - "${FLASKSHOP_URL}"
+      # (optional) include/exclude paths can be added if you need to narrow scope:
+      # includePaths:
+      #   - "${FLASKSHOP_URL}.*"
+      # Authentication & session management can be defined here or via jobs
+      authentication:
+        method: formBasedAuthentication
+        parameters:
+          # login URL (adjust path if your app uses /auth/login or similar)
+          loginUrl: "${FLASKSHOP_URL}/login"
+          # login request body (change param names to match your form)
+          loginRequestData: "username=${ZAP_USER}&password=${ZAP_PASS}"
+      sessionManagement:
+        method: cookieBasedSessionManagement
+      users:
+        - name: zap-user
+          enabled: true
+          credentials:
+            username: "${ZAP_USER}"
+            password: "${ZAP_PASS}"
 
+# Jobs list
 jobs:
-  # Step 1: spider while authenticating (so ZAP builds a logged-in site map)
-  - name: login-and-spider
-    type: spider
-    target: "${FLASKSHOP_URL}"
-    context: flaskshop
-    auth:
-      type: formBasedAuthentication
-      loginRequestUrl: "${FLASKSHOP_URL}/login"
-      # use parameter names your login form actually expects
-      loginRequestBody: "username=${ZAP_USER}&password=${ZAP_PASS}"
-    sessionManagement:
-      type: cookieBasedSessionManagement
-    users:
-      - name: zap-user
-        enabled: true
-        credentials:
-          - name: username
-            value: "${ZAP_USER}"
-          - name: password
-            value: "${ZAP_PASS}"
-    # run a spider to crawl as the logged-in user
-    maxDepth: 5
+  # 1) Spider the context (will use the first/only defined context by default)
+  - type: spider
+    name: spider
+    parameters:
+      # context name to use (optional if you only have one context)
+      context: flaskshop
+      # optional: the subtree to spider (default is entire context)
+      url: "${FLASKSHOP_URL}"
+      maxDepth: 5
+      # optional: run as a specific user (if you want the spider to authenticate)
+      user: zap-user
 
-  # Step 2: passive + active scan of the authenticated crawl results
-  - name: active-scan
-    type: activeScan
-    target: "${FLASKSHOP_URL}"
-    context: flaskshop
-    # tune the active scan as needed; activeScan is intrusive — run on staging if possible
+  # 2) AJAX spider (often useful for JS-heavy apps)
+  - type: ajaxSpider
+    name: ajax-spider
+    parameters:
+      context: flaskshop
+      url: "${FLASKSHOP_URL}"
+      user: zap-user
+      maxDuration: 2     # minutes
 
+  # 3) Passive scan (runs automatically while crawling)
+  - type: passiveScan
+    name: passive-scan
+    parameters:
+      context: flaskshop
+
+  # 4) Active scan (intrusive — run only on staging or with permission)
+  - type: activeScan
+    name: active-scan
+    parameters:
+      context: flaskshop
+      url: "${FLASKSHOP_URL}"
+      user: zap-user
+      policy: "Default Policy"
+      maxRuleDurationInMins: 5
+      maxScanDurationInMins: 60
+
+# Reports
 reports:
   - type: html
     fileName: zap-report.html
+  - type: xml
+    fileName: zap-report.xml
