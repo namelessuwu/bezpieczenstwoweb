@@ -24,3 +24,24 @@ jobs:
             ZAP_USER
             ZAP_PASS
 
+            
+      - name: Generate ZAP HTML Report
+        run: |
+          docker run -v $PWD:/zap/wrk/:rw ghcr.io/zaproxy/zaproxy:stable \
+            zap.sh -cmd -session /zap/wrk/untitled_session.session \
+            -last_scan_report /zap/wrk/zap_report.html -reportformat html
+
+      - name: Generate ZAP JSON Report
+        run: |
+          docker run -v $PWD:/zap/wrk/:rw ghcr.io/zaproxy/zaproxy:stable \
+            zap.sh -cmd -session /zap/wrk/untitled_session.session \
+            -last_scan_report /zap/wrk/zap_report.json -reportformat json
+
+      - name: Upload ZAP Reports as Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-scan-reports
+          path: |
+            zap_report.html
+            zap_report.json
+
