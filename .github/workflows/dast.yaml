@@ -1,4 +1,4 @@
-name: ZAP Authenticated DAST 
+name: ZAP Authenticated DAST
 
 on:
   workflow_dispatch:
@@ -12,26 +12,51 @@ env:
 jobs:
   zap-auth-scan:
     runs-on: ubuntu-latest
+
+    # Inject secrets into job env so we can validate them with normal shell checks.
+    env:
+      ZAP_API_KEY: ${{ secrets.ZAP_API_KEY }}
+      TARGET_URL: ${{ secrets.TARGET_URL }}
+      LOGIN_URL: ${{ secrets.LOGIN_URL }}
+      LOGIN_POST_DATA: ${{ secrets.LOGIN_POST_DATA }}
+      ZAP_USER: ${{ secrets.ZAP_USER }}
+      ZAP_PASS: ${{ secrets.ZAP_PASS }}
+      ZAP_PORT: ${{ env.ZAP_PORT }}
+      ZAP_HOST: ${{ env.ZAP_HOST }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Make scan script executable
-        run: chmod +x .zap/zap-config-and-scan.sh
-
-      - name: Validate required secrets
         run: |
-          missing=""
-          for v in ZAP_API_KEY TARGET_URL LOGIN_URL LOGIN_POST_DATA ZAP_USER ZAP_PASS; do
-            if [ -z "${{ secrets[$v] }}" ]; then
-              missing="${missing} $v"
-            fi
-          done
-          if [ -n "$missing" ]; then
-            echo "ERROR: Missing repository secrets:$missing"
-            echo "Please create them in Settings → Secrets and variables → Actions"
+          if [ -f .zap/zap-config-and-scan.sh ]; then
+            chmod +x .zap/zap-config-and-scan.sh
+            echo "Made .zap/zap-config-and-scan.sh executable"
+          else
+            echo "ERROR: .zap/zap-config-and-scan.sh not found"
+            ls -la
             exit 1
           fi
+
+      - name: Validate required secrets (shell check)
+        run: |
+          missing=""
+          for var in ZAP_API_KEY TARGET_URL LOGIN_URL LOGIN_POST_DATA ZAP_USER ZAP_PASS; do
+            val="$(printenv "$var" || true)"
+            if [ -z "$val" ]; then
+              missing="$missing $var"
+            fi
+          done
+
+          if [ -n "$missing" ]; then
+            echo "ERROR: Missing required secrets/env variables:$missing"
+            echo "Add them in Settings → Secrets and variables → Actions (repository-level) and re-run."
+            exit 1
+          fi
+
+          echo "All required secrets present (will not print secret values)."
+
         shell: bash
 
       - name: Remove old zap container (best-effort)
@@ -44,17 +69,15 @@ jobs:
             -p ${ZAP_PORT}:${ZAP_PORT} \
             zaproxy/zap-stable:latest \
             zap.sh -daemon -host 0.0.0.0 -port ${ZAP_PORT} \
-            -config api.disablekey=false -config api.key=${{ secrets.ZAP_API_KEY }}
+            -config api.disablekey=false -config api.key=${ZAP_API_KEY}
 
       - name: Wait for ZAP to be ready (robust, 300s)
-        env:
-          APIKEY: ${{ secrets.ZAP_API_KEY }}
         run: |
           set -euo pipefail
-          ZAP_HOST=127.0.0.1
-          ZAP_PORT=${{ env.ZAP_PORT }}
-          APIKEY=${APIKEY:-}
-          for i in $(seq 1 60); do   # 60 * 5s = 300s max
+          ZAP_HOST=${ZAP_HOST:-127.0.0.1}
+          ZAP_PORT=${ZAP_PORT:-8080}
+          APIKEY=${ZAP_API_KEY:-}
+          for i in $(seq 1 60); do
             echo "Checking ZAP ($i)..."
             if curl -s "http://${ZAP_HOST}:${ZAP_PORT}/JSON/core/view/version/?apikey=${APIKEY}" | grep -q '"version"'; then
               echo "ZAP ready (runner -> container)"
@@ -74,6 +97,7 @@ jobs:
           echo "ZAP did not become ready after 300s — container logs (tail 200):"
           docker logs zap-dast --tail 200 || true
           exit 1
+        shell: bash
 
       - name: Show container status & logs on failure
         if: failure()
@@ -82,28 +106,32 @@ jobs:
           docker ps -a --filter "name=zap-dast"
           echo "=== last 200 lines of logs ==="
           docker logs zap-dast --tail 200 || true
+        shell: bash
 
-      - name: Print env info (for debug)
+      - name: Print env info (for debug — no secrets printed)
         run: |
-          echo "TARGET_URL set? ${TARGET_URL:-<not-set>}"
-          echo "LOGIN_URL set? ${LOGIN_URL:-<not-set>}"
+          echo "TARGET_URL set? ${TARGET_URL:+yes}"
+          echo "LOGIN_URL set? ${LOGIN_URL:+yes}"
           echo "ZAP_HOST: ${ZAP_HOST}"
           echo "ZAP_PORT: ${ZAP_PORT}"
+        shell: bash
 
       - name: Run ZAP configuration & authenticated scan
         env:
+          # pass secrets again into this step explicitly (they're already in job env, but explicit is clearer)
           ZAP_API_KEY: ${{ secrets.ZAP_API_KEY }}
-          TARGET_URL: ${{ secrets.TARGET_URL }}       # e.g. https://staging.example.com
-          LOGIN_URL: ${{ secrets.LOGIN_URL }}         # e.g. https://staging.example.com/login
-          LOGIN_POST_DATA: ${{ secrets.LOGIN_POST_DATA }} # e.g. username={%username%}&password={%password%}
+          TARGET_URL: ${{ secrets.TARGET_URL }}
+          LOGIN_URL: ${{ secrets.LOGIN_URL }}
+          LOGIN_POST_DATA: ${{ secrets.LOGIN_POST_DATA }}
           ZAP_USER: ${{ secrets.ZAP_USER }}
           ZAP_PASS: ${{ secrets.ZAP_PASS }}
-          ZAP_HOST: 127.0.0.1
-          ZAP_PORT: 8080
+          ZAP_HOST: ${{ env.ZAP_HOST }}
+          ZAP_PORT: ${{ env.ZAP_PORT }}
         run: |
           set -euo pipefail
           echo "[*] Running scan script: .zap/zap-config-and-scan.sh"
           ./.zap/zap-config-and-scan.sh
+        shell: bash
 
       - name: Upload ZAP HTML report
         if: always()
@@ -122,7 +150,9 @@ jobs:
       - name: Dump zap container logs (always)
         if: always()
         run: docker logs zap-dast --tail 200 || true
+        shell: bash
 
       - name: Cleanup ZAP container
         if: always()
         run: docker rm -f zap-dast >/dev/null 2>&1 || true
+        shell: bash
