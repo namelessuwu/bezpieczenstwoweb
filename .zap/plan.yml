@@ -1,56 +1,44 @@
-type: Automation
+---
+version: "2.1"
+environment:
+  - name: default
+    contexts:
+      - name: flaskshop
+        include:
+          - "${FLASKSHOP_URL}.*"
 
-# top-level variables (reference container env vars)
-vars:
-  TARGET_URL: "${TARGET_URL}"
-  REPORT_NAME: "${REPORT_NAME:-zap-auth-report.html}"
-
-# contexts define the scope and authentication
-contexts:
-  - name: "CIContext"
-    include:
-      - "${TARGET_URL}.*"
-    sessionManagement:
-      method: "cookieBasedSessionManagement"
-    authentication:
-      method: "formBasedAuthentication"
-      loginUrl: "${TARGET_URL}/login"
-      loginRequestData: "username={%username%}&password={%password%}"
-    users:
-      - name: "ci-user"
-        enabled: true
-        credentials:
-          username: "${ZAP_USER}"
-          password: "${ZAP_PASS}"
+    applications:
+      - name: flaskshop-app
+        type: 'web'
+        url: "${FLASKSHOP_URL}"
+        # NOTE: ZAP Automation Framework supports environment variable interpolation
 
 jobs:
-  - name: "Spider (context + user)"
-    type: "spider"
-    context: "CIContext"
-    user: "ci-user"
-    options:
-      maxDepth: 5
-
-  - name: "AjaxSpider"
-    type: "spiderAjax"
-    context: "CIContext"
-    user: "ci-user"
-    options:
-      maxDuration: 120
-
-  - name: "Authenticated Active Scan"
-    type: "activeScan"
-    context: "CIContext"
-    user: "ci-user"
-    options:
-      politeness: "default"
-      scanPolicyName: "Default Policy"
-
-  - name: "Generate Reports"
-    type: "report"
-    options:
-      formats:
-        - html
-        - json
-      filename: "${REPORT_NAME}"
-      outdir: ".zap/output"
+  - name: authenticated-spider-passive
+    type: spider
+    target: "${FLASKSHOP_URL}"
+    context: flaskshop
+    # use form-based login
+    auth:
+      type: formBasedAuthentication
+      loginRequestUrl: "${FLASKSHOP_URL}/login"
+      loginRequestBody: "username=${ZAP_USER}&password=${ZAP_PASS}"
+      # If the app uses different parameter names, change them above.
+    sessionManagement:
+      type: cookieBasedSessionManagement
+    users:
+      - name: zap-user
+        enabled: true
+        credentials:
+          - name: username
+            value: "${ZAP_USER}"
+          - name: password
+            value: "${ZAP_PASS}"
+    jobs:
+      - spider
+      - ajaxSpider
+      - passiveScan
+      - activeScan
+    report:
+      - type: html
+        fileName: zap-report.html
