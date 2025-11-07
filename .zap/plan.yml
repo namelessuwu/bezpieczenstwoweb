@@ -28,9 +28,8 @@ env:
         username: ${ZAP_USER}
   parameters: {}
 jobs:
-- type: activeScan
+- type: spider
   parameters:
     context: login-flask
     url: https://flaskshop.online
-  policyDefinition: {}
 
