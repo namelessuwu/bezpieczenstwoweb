@@ -9,15 +9,30 @@ jobs:
   zap-auth:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Show plan (no secrets)
+      - name: Show .zap folder (no secrets)
         run: |
           echo "Files in .zap:"
           ls -la .zap || true
-          echo "Plan preview (no secrets):"
+          echo "Preview plan header (no secrets):"
           sed -n '1,200p' .zap/plan.yml || true
+
+      - name: Check secret presence (no values printed)
+        # This step only verifies presence of secrets without printing them.
+        run: |
+          for v in TARGET_URL ZAP_USER ZAP_PASS; do
+            if [ -z "${!v}" ]; then
+              echo "$v is EMPTY"
+            else
+              echo "$v is SET"
+            fi
+          done
+        env:
+          TARGET_URL: ${{ secrets.TARGET_URL }}
+          ZAP_USER:    ${{ secrets.ZAP_USER }}
+          ZAP_PASS:    ${{ secrets.ZAP_PASS }}
 
       - name: Run ZAP Automation Framework plan
         uses: zaproxy/action-af@v0.2.0
@@ -32,9 +47,10 @@ jobs:
           TARGET_URL: ${{ secrets.TARGET_URL }}
           ZAP_USER:    ${{ secrets.ZAP_USER }}
           ZAP_PASS:    ${{ secrets.ZAP_PASS }}
+          # optional: change filename if desired
           REPORT_NAME: zap-auth-report.html
 
-      - name: Upload reports
+      - name: Upload ZAP reports (artifacts)
         uses: actions/upload-artifact@v4
         with:
           name: zap-auth-reports
