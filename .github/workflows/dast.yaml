@@ -69,8 +69,8 @@ jobs:
           TARGET_URL: ${{ secrets.TARGET_URL }}      
           LOGIN_URL: ${{ secrets.LOGIN_URL }}         
           LOGIN_POST_DATA: ${{ secrets.LOGIN_POST_DATA }}
-          AUTH_USERNAME: ${{ secrets.AUTH_USERNAME }}
-          AUTH_PASSWORD: ${{ secrets.AUTH_PASSWORD }}
+          ZAP_USER: ${{ secrets.ZAP_USER }}
+          ZAP_PASS: ${{ secrets.ZAP_PASS }}
           ZAP_HOST: 127.0.0.1
           ZAP_PORT: 8080
         run: |
