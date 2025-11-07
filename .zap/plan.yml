@@ -1,66 +1,73 @@
 env:
   contexts:
-  - name: login-flask
-    urls: 
-    - https://flaskshop.online/login
-    includePaths:
-    - ^https://flaskshop\.online/.*$
-    authentication:
-      method: form
-      parameters:
-        loginPageUrl: https://flaskshop.online/login
-        loginRequestUrl: https://flaskshop.online/login
-        loginRequestBody: "username={%username%}&password={%password%}&submit=Log+in"
-      verification:
-        method: autodetect
-        pollFrequency: 60
-        pollUnits: requests
-        pollUrl: ""
-        pollPostData: ""
-    sessionManagement:
-      method: cookie
-    technology: {}
-    structure: {}
-    users:
-    - name: zap-user
-      credentials:
-        password: ${ZAP_PASS}
-        username: ${ZAP_USER}
-  parameters: {}
+    - name: login-flask
+      # główny scope (możesz zostawić includePaths albo użyć urls/urlsRegex)
+      includePaths:
+        - ^${TARGET_URL}.*$
+      authentication:
+        method: form
+        parameters:
+          loginPageUrl: ${TARGET_URL}/login
+          loginRequestUrl: ${TARGET_URL}/login
+          loginRequestBody: "username={%username%}&password={%password%}&submit=Log+in"
+        verification:
+          method: autodetect
+          pollFrequency: 60
+          pollUnits: requests
+          pollUrl: ""
+          pollPostData: ""
+      sessionManagement:
+        method: cookie
+      technology: {}
+      structure: {}
+      users:
+        - name: zap-user
+          credentials:
+            username: ${ZAP_USER}
+            password: ${ZAP_PASS}
+
 jobs:
-- type: spider
-  parameters:
-    context: login-flask
-    url: https://flaskshop.online
+  - type: spider
+    name: spider
+    parameters:
+      context: login-flask
+      url: ${TARGET_URL}
+      user: zap-user
+      maxDuration: 5
 
-- type: activeScan
-  parameters:
-    context: login-flask
-    url: https://flaskshop.online
+  - type: activeScan
+    name: active-scan
+    parameters:
+      context: login-flask
+      url: ${TARGET_URL}
+      user: zap-user
+      maxScanDurationInMins: 15
+      maxRuleDurationInMins: 5
+      scanOnlyInScope: true
 
-- type: report
-   name: HTML Report
-   parameters:
-     template: traditional-html
-     reportDir: /zap/wrk/.zap/plan-results/
-     reportFile: zap-report.html
-     reportTitle: "FlaskShop ZAP HTML Report"
-     displayReport: false
+  - type: report
+    name: HTML Report
+    parameters:
+      template: traditional-html
+      reportDir: "/zap/wrk/.zap/plan-results/"
+      reportFile: zap-report.html
+      reportTitle: "FlaskShop ZAP HTML Report"
+      displayReport: false
 
-- type: report
-  name: XML Report
-   parameters:
-     template: traditional-xml
-     reportDir: /zap/wrk/.zap/plan-results/
-     reportFile: zap-report.xml
-     reportTitle: "FlaskShop ZAP XML Report"
-     displayReport: false
+  - type: report
+    name: XML Report
+    parameters:
+      template: traditional-xml
+      reportDir: "/zap/wrk/.zap/plan-results/"
+      reportFile: zap-report.xml
+      reportTitle: "FlaskShop ZAP XML Report"
+      displayReport: false
 
- - type: report
-   name: JSON Report
-   parameters:
-     template: traditional-json
-     reportDir: /zap/wrk/.zap/plan-results/
-     reportFile: zap-report.json
-     reportTitle: "FlaskShop ZAP JSON Report"
-     displayReport: true
+  - type: report
+    name: JSON Report
+    parameters:
+      template: traditional-json
+      reportDir: "/zap/wrk/.zap/plan-results/"
+      reportFile: zap-report.json
+      reportTitle: "FlaskShop ZAP JSON Report"
+      displayReport: false
