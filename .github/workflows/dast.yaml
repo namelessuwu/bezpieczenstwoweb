@@ -1,20 +1,15 @@
-name: DAST - ZAP Authenticated Full Scan (AF)
+name: DAST - ZAP Authenticated Full Scan (docker-run debug)
 
 on:
   workflow_dispatch:
+  workflow_call:
   push:
     branches: [ main ]
 
 jobs:
-  zap-auth:
+  zap-docker:
     runs-on: ubuntu-latest
-
-    # Set required secrets at the job-level so the action's docker run sees them
-    env:
-      TARGET_URL: ${{ secrets.TARGET_URL }}
-      ZAP_USER:    ${{ secrets.ZAP_USER }}
-      ZAP_PASS:    ${{ secrets.ZAP_PASS }}
-      REPORT_NAME: zap-auth-report.html
+    timeout-minutes: 60
 
     steps:
       - name: Checkout repository
@@ -27,27 +22,33 @@ jobs:
           echo "Preview plan header (no secrets):"
           sed -n '1,200p' .zap/plan.yml || true
 
-      - name: Check secret presence (no values printed)
+      - name: Run ZAP docker with explicit envs and debug inside container
+        env:
+          # These are *not* echoed; they are used in the docker command below.
+          TARGET_URL: ${{ secrets.TARGET_URL }}
+          ZAP_USER:    ${{ secrets.ZAP_USER }}
+          ZAP_PASS:    ${{ secrets.ZAP_PASS }}
         run: |
-          for v in TARGET_URL ZAP_USER ZAP_PASS; do
-            if [ -z "${!v}" ]; then
-              echo "$v is EMPTY"
-            else
-              echo "$v is SET"
-            fi
-          done
-
-      - name: Run ZAP Automation Framework plan
-        uses: zaproxy/action-af@v0.2.0
-        with:
-          plan: '.zap/plan.yml'
-          docker_env_vars: |
-            TARGET_URL
-            ZAP_USER
-            ZAP_PASS
-            REPORT_NAME
+          # Run the ZAP container directly, explicitly passing secret values into docker.
+          # First the container checks whether each required env var is set (prints SET/EMPTY).
+          # Then it runs zap.sh -cmd -autorun pointing at your plan file.
+          docker run --rm -v "$PWD":/zap/wrk:rw --network=host \
+            -e TARGET_URL="${TARGET_URL}" \
+            -e ZAP_USER="${ZAP_USER}" \
+            -e ZAP_PASS="${ZAP_PASS}" \
+            -e REPORT_NAME="zap-auth-report.html" \
+            ghcr.io/zaproxy/zaproxy:stable \
+            sh -c '\
+              echo "=== inside-container env presence check ==="; \
+              for v in TARGET_URL ZAP_USER ZAP_PASS REPORT_NAME; do \
+                if [ -z "${!v}" ]; then echo "$v is EMPTY"; else echo "$v is SET"; fi; \
+              done; \
+              echo "=== running ZAP autorun ==="; \
+              zap.sh -cmd -autorun /zap/wrk/.zap/plan.yml \
+            '
 
       - name: Upload ZAP reports (artifacts)
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: zap-auth-reports
