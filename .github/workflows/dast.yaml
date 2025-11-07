@@ -16,19 +16,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Start ZAP Docker (daemon)
-        run: |
-          # Ensure any old container is removed (best-effort)
-          docker rm -f zap-dast >/dev/null 2>&1 || true
+      - name: Remove old zap container (best-effort)
+        run: docker rm -f zap-dast >/dev/null 2>&1 || true
 
-          # Start ZAP daemon. If you run on arm runners and see issues,
-          # consider adding "--platform linux/amd64" to docker run.
+      - name: Start ZAP Docker (daemon) (force amd64)
+        run: |
+          # Start ZAP daemon. If you prefer GHCR use ghcr.io/zaproxy/zap-stable:latest
           docker run --name zap-dast -u zap -d \
+            --platform linux/amd64 \
             -p ${ZAP_PORT}:${ZAP_PORT} \
             zaproxy/zap-stable:latest \
-            zap.sh -daemon -host 0.0.0.0 -port ${ZAP_PORT} -config api.disablekey=false -config api.key=${{ secrets.ZAP_API_KEY }}
+            zap.sh -daemon -host 0.0.0.0 -port ${ZAP_PORT} \
+            -config api.disablekey=false -config api.key=${{ secrets.ZAP_API_KEY }}
 
-      - name: Wait for ZAP to be ready (robust)
+      - name: Wait for ZAP to be ready (robust, 300s)
         env:
           APIKEY: ${{ secrets.ZAP_API_KEY }}
         run: |
@@ -36,7 +37,7 @@ jobs:
           ZAP_HOST=127.0.0.1
           ZAP_PORT=${{ env.ZAP_PORT }}
           APIKEY=${APIKEY:-}
-          for i in $(seq 1 36); do   # 36 * 5s = 180s max
+          for i in $(seq 1 60); do   # 60 * 5s = 300s max
             echo "Checking ZAP ($i)..."
             # Try HTTP from runner to the mapped port
             if curl -s "http://${ZAP_HOST}:${ZAP_PORT}/JSON/core/view/version/?apikey=${APIKEY}" | grep -q '"version"'; then
@@ -50,30 +51,47 @@ jobs:
             fi
             # Show logs occasionally to aid debugging
             if [ $(( i % 6 )) -eq 0 ]; then
-              echo "---- last container logs (tail 50) ----"
-              docker logs zap-dast --tail 50 || true
+              echo "---- last container logs (tail 80) ----"
+              docker logs zap-dast --tail 80 || true
               echo "--------------------------------------"
             fi
             sleep 5
           done
-          echo "ZAP did not become ready after 180s — container logs:"
+          echo "ZAP did not become ready after 300s — container logs (tail 200):"
           docker logs zap-dast --tail 200 || true
           exit 1
+
+      - name: Show container status & logs (debug)
+        if: failure()
+        run: |
+          echo "=== docker ps -a ==="
+          docker ps -a --filter "name=zap-dast"
+          echo "=== last 200 lines of logs ==="
+          docker logs zap-dast --tail 200 || true
 
       - name: Make scan script executable
         run: chmod +x .zap/zap-config-and-scan.sh
 
+      - name: Print env info (for debug)
+        run: |
+          echo "TARGET_URL set? ${TARGET_URL:-<not-set>}"
+          echo "LOGIN_URL set? ${LOGIN_URL:-<not-set>}"
+          echo "ZAP_HOST: ${ZAP_HOST}"
+          echo "ZAP_PORT: ${ZAP_PORT}"
+
       - name: Run ZAP configuration & authenticated scan
         env:
           ZAP_API_KEY: ${{ secrets.ZAP_API_KEY }}
-          TARGET_URL: ${{ secrets.TARGET_URL }}      
-          LOGIN_URL: ${{ secrets.LOGIN_URL }}         
-          LOGIN_POST_DATA: ${{ secrets.LOGIN_POST_DATA }}
+          TARGET_URL: ${{ secrets.TARGET_URL }}       # e.g. https://staging.example.com
+          LOGIN_URL: ${{ secrets.LOGIN_URL }}         # e.g. https://staging.example.com/login
+          LOGIN_POST_DATA: ${{ secrets.LOGIN_POST_DATA }} # e.g. username={%username%}&password={%password%}
           ZAP_USER: ${{ secrets.ZAP_USER }}
           ZAP_PASS: ${{ secrets.ZAP_PASS }}
           ZAP_HOST: 127.0.0.1
           ZAP_PORT: 8080
         run: |
+          set -euo pipefail
+          echo "[*] Running scan script: ./.zap/zap-config-and-scan.sh"
           ./.zap/zap-config-and-scan.sh
 
       - name: Upload ZAP HTML report
@@ -83,8 +101,17 @@ jobs:
           name: zap-report
           path: zap-report.html
 
+      - name: Upload ZAP alerts JSON (optional)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-alerts
+          path: zap-alerts.json
+
+      - name: Dump zap container logs (always)
+        if: always()
+        run: docker logs zap-dast --tail 200 || true
+
       - name: Cleanup ZAP container
         if: always()
-        run: |
-          docker logs zap-dast --tail 200 || true
-          docker rm -f zap-dast >/dev/null 2>&1 || true
+        run: docker rm -f zap-dast >/dev/null 2>&1 || true
