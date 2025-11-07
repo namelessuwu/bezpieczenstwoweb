@@ -1,29 +1,24 @@
----
 version: "2.1"
-environment:
+
+# Correct top-level key is `environments` (plural)
+environments:
   - name: default
     contexts:
       - name: flaskshop
         include:
-          - "${FLASKSHOP_URL}.*"
-
-    applications:
-      - name: flaskshop-app
-        type: 'web'
-        url: "${FLASKSHOP_URL}"
-        # NOTE: ZAP Automation Framework supports environment variable interpolation
+          - "${FLASKSHOP_URL}.*"   # URL included in the context
 
 jobs:
-  - name: authenticated-spider-passive
+  # Step 1: spider while authenticating (so ZAP builds a logged-in site map)
+  - name: login-and-spider
     type: spider
     target: "${FLASKSHOP_URL}"
     context: flaskshop
-    # use form-based login
     auth:
       type: formBasedAuthentication
       loginRequestUrl: "${FLASKSHOP_URL}/login"
+      # use parameter names your login form actually expects
       loginRequestBody: "username=${ZAP_USER}&password=${ZAP_PASS}"
-      # If the app uses different parameter names, change them above.
     sessionManagement:
       type: cookieBasedSessionManagement
     users:
@@ -34,11 +29,16 @@ jobs:
             value: "${ZAP_USER}"
           - name: password
             value: "${ZAP_PASS}"
-    jobs:
-      - spider
-      - ajaxSpider
-      - passiveScan
-      - activeScan
-    report:
-      - type: html
-        fileName: zap-report.html
+    # run a spider to crawl as the logged-in user
+    maxDepth: 5
+
+  # Step 2: passive + active scan of the authenticated crawl results
+  - name: active-scan
+    type: activeScan
+    target: "${FLASKSHOP_URL}"
+    context: flaskshop
+    # tune the active scan as needed; activeScan is intrusive — run on staging if possible
+
+reports:
+  - type: html
+    fileName: zap-report.html
