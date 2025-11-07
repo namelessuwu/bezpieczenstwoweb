@@ -14,19 +14,54 @@ jobs:
 
       - name: Check site reachable
         run: |
-          echo "Checking ${FLASKSHOP_URL}"
-          curl -v --max-time 20 --silent --show-error --fail "${FLASKSHOP_URL}" || (echo "Site unreachable from runner" && exit 1)
+          echo "Checking ${TARGET_URL}"
+          curl -v --max-time 20 --silent --show-error --fail "${TARGET_URL}" || (echo "Site unreachable from runner" && exit 1)
         env:
-          FLASKSHOP_URL: ${{ secrets.TARGET_URL }}
+          TARGET_URL: ${{ secrets.TARGET_URL }}
 
       - name: Run ZAP Automation Framework
         uses: zaproxy/action-af@v0.2.0
         with:
           plan: '.zap/plan.yml'
           docker_env_vars: |
+            TARGET_URL
             ZAP_USER
             ZAP_PASS
         env:
+          TARGET_URL: ${{ secrets.TARGET_URL }}
           ZAP_USER: ${{ secrets.ZAP_USER }}
           ZAP_PASS: ${{ secrets.ZAP_PASS }}
+        
+      - name: Collect ZAP reports into repo root
+        if: always()
+        run: |
+          # find reports and copy them to repository root so upload-artifact will catch them
+          FOUND=false
+          while IFS= read -r f; do
+            echo "Found report: $f"
+            cp -v "$f" .
+            FOUND=true
+          done < <(find . -type f -iname 'zap-report.*' -print || true)
+
+          if [ "$FOUND" = false ]; then
+            echo "No zap-report.* files found in workspace. Checking typical locations..."
+            # try typical AF output location
+            if [ -d ".zap/plan-results" ]; then
+              echo ".zap/plan-results exists; listing:"
+              find .zap/plan-results -type f -print || true
+            fi
+          fi
+
+      - name: Upload ZAP reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-reports
+          path: |
+            zap-report.html
+            zap-report.xml
+            zap-report.json
+            .zap/plan-results/**/zap-report.html
+            .zap/plan-results/**/zap-report.xml
+            .zap/plan-results/**/zap-report.json
 
