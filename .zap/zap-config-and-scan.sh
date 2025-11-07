@@ -7,8 +7,8 @@ set -euo pipefail
 : "${TARGET_URL:?TARGET_URL must be set}"
 : "${LOGIN_URL:?LOGIN_URL must be set}"
 : "${LOGIN_POST_DATA:?LOGIN_POST_DATA must be set}"
-: "${AUTH_USERNAME:?AUTH_USERNAME must be set}"
-: "${AUTH_PASSWORD:?AUTH_PASSWORD must be set}"
+: "${ZAP_USER:?ZAP_USER must be set}"
+: "${ZAP_PASS:?ZAP_PASS must be set}"
 
 BASE="http://${ZAP_HOST}:${ZAP_PORT}"
 API="?apikey=${ZAP_API_KEY}"
@@ -62,7 +62,7 @@ fi
 echo "[*] User id: ${USER_ID}"
 
 # Provide credentials - the param is authCredentialsConfig=username=<user>&password=<pass>
-CREDS="username=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1]))" "${AUTH_USERNAME}")&password=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1]))" "${AUTH_PASSWORD}")"
+CREDS="username=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1]))" "${ZAP_USER}")&password=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1]))" "${ZAP_PASS}")"
 curl -s "${BASE}/JSON/users/action/setAuthenticationCredentials/${API}&contextId=${CONTEXT_ID}&userId=${USER_ID}&authCredentialsConfig=${CREDS}" | jq .
 
 # Enable the user
