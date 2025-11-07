@@ -21,6 +21,7 @@ jobs:
             ZAP_USER
             ZAP_PASS
         env:
-          FLASKSHOP_URL: ${{ secrets.FLASKSHOP_URL }}
+          FLASKSHOP_URL: ${{ secrets.TARGET_URL }}
           ZAP_USER: ${{ secrets.ZAP_USER }}
           ZAP_PASS: ${{ secrets.ZAP_PASS }}
+
