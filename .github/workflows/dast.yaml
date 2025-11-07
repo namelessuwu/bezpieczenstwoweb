@@ -5,37 +5,59 @@ on:
   push:
     branches: [ main ]
 
+env:
+  ZAP_PORT: 8080
+  ZAP_HOST: 127.0.0.1
+
 jobs:
   zap-auth-scan:
     runs-on: ubuntu-latest
-    env:
-      ZAP_PORT: 8080
-      ZAP_HOST: 127.0.0.1
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Start ZAP Docker (daemon)
         run: |
-          docker pull zaproxy/zap-stable:latest
-          docker run --name zap-dast -u zap -d \
-            -p 8080:8080 \
-            zaproxy/zap-stable:latest \
-            zap.sh -daemon -host 0.0.0.0 -port 8080 -config api.disablekey=false -config api.key=${ZAP_API_KEY}
+          # Ensure any old container is removed (best-effort)
+          docker rm -f zap-dast >/dev/null 2>&1 || true
 
-      - name: Wait for ZAP to be ready
-        # simple readiness loop
+          # Start ZAP daemon. If you run on arm runners and see issues,
+          # consider adding "--platform linux/amd64" to docker run.
+          docker run --name zap-dast -u zap -d \
+            -p ${ZAP_PORT}:${ZAP_PORT} \
+            zaproxy/zap-stable:latest \
+            zap.sh -daemon -host 0.0.0.0 -port ${ZAP_PORT} -config api.disablekey=false -config api.key=${{ secrets.ZAP_API_KEY }}
+
+      - name: Wait for ZAP to be ready (robust)
+        env:
+          APIKEY: ${{ secrets.ZAP_API_KEY }}
         run: |
-          for i in $(seq 1 30); do
+          set -euo pipefail
+          ZAP_HOST=127.0.0.1
+          ZAP_PORT=${{ env.ZAP_PORT }}
+          APIKEY=${APIKEY:-}
+          for i in $(seq 1 36); do   # 36 * 5s = 180s max
             echo "Checking ZAP ($i)..."
-            if curl -s "http://${ZAP_HOST}:${ZAP_PORT}/JSON/core/view/version/?apikey=${{ secrets.ZAP_API_KEY }}" | grep -q "version"; then
-              echo "ZAP is ready"
+            # Try HTTP from runner to the mapped port
+            if curl -s "http://${ZAP_HOST}:${ZAP_PORT}/JSON/core/view/version/?apikey=${APIKEY}" | grep -q '"version"'; then
+              echo "ZAP ready (runner -> container)"
               exit 0
             fi
-            sleep 2
+            # Try curling from inside the container (if container running)
+            if docker ps --filter "name=zap-dast" --format '{{.Names}}' | grep -q zap-dast; then
+              echo "Trying curl inside container..."
+              docker exec zap-dast sh -c "curl -s http://127.0.0.1:${ZAP_PORT}/JSON/core/view/version/?apikey=${APIKEY}" | grep -q '"version"' && { echo "ZAP ready (inside container)"; exit 0; } || true
+            fi
+            # Show logs occasionally to aid debugging
+            if [ $(( i % 6 )) -eq 0 ]; then
+              echo "---- last container logs (tail 50) ----"
+              docker logs zap-dast --tail 50 || true
+              echo "--------------------------------------"
+            fi
+            sleep 5
           done
-          echo "ZAP did not become ready"
-          docker logs zap-dast || true
+          echo "ZAP did not become ready after 180s — container logs:"
+          docker logs zap-dast --tail 200 || true
           exit 1
 
       - name: Make scan script executable
@@ -44,15 +66,15 @@ jobs:
       - name: Run ZAP configuration & authenticated scan
         env:
           ZAP_API_KEY: ${{ secrets.ZAP_API_KEY }}
-          TARGET_URL: ${{ secrets.TARGET_URL }}       
-          LOGIN_URL: ${{ secrets.LOGIN_URL }}         
-          LOGIN_POST_DATA: ${{ secrets.LOGIN_POST_DATA }}
-          AUTH_USERNAME: ${{ secrets.ZAP_USER }}
-          AUTH_PASSWORD: ${{ secrets.ZAP_PASS }}
+          TARGET_URL: ${{ secrets.TARGET_URL }}       # e.g. https://staging.example.com
+          LOGIN_URL: ${{ secrets.LOGIN_URL }}         # e.g. https://staging.example.com/login
+          LOGIN_POST_DATA: ${{ secrets.LOGIN_POST_DATA }} # e.g. username={%username%}&password={%password%}
+          AUTH_USERNAME: ${{ secrets.AUTH_USERNAME }}
+          AUTH_PASSWORD: ${{ secrets.AUTH_PASSWORD }}
           ZAP_HOST: 127.0.0.1
           ZAP_PORT: 8080
         run: |
-          .zap/zap-config-and-scan.sh
+          ./ci/zap-config-and-scan.sh
 
       - name: Upload ZAP HTML report
         if: always()
@@ -60,3 +82,9 @@ jobs:
         with:
           name: zap-report
           path: zap-report.html
+
+      - name: Cleanup ZAP container
+        if: always()
+        run: |
+          docker logs zap-dast --tail 200 || true
+          docker rm -f zap-dast >/dev/null 2>&1 || true
