@@ -1,16 +1,14 @@
-# .zap/plan.template.yml
 env:
   contexts:
   - name: login-flask
-    # this must be a valid regex; we'll replace the placeholder with the real host at runtime
     includePaths:
-    - ^@@FLASKSHOP_URL_ESCAPED@@/.*$
+    - ^${FLASKSHOP_URL}.*$
     authentication:
       method: form
       parameters:
-        loginPageUrl: @@FLASKSHOP_URL@@/login
-        loginRequestUrl: @@FLASKSHOP_URL@@/login
-        # ZAP uses {%username%} and {%password%} tokens in the login body
+        loginPageUrl: ${FLASKSHOP_URL}/login
+        loginRequestUrl: ${FLASKSHOP_URL}/login
+        # użyj placeholderów zamiast jawnego hasła
         loginRequestBody: "username={%username%}&password={%password%}&submit=Log+in"
       verification:
         method: autodetect
@@ -24,10 +22,10 @@ env:
     structure: {}
     users:
     - name: zap-user
+      # zamiast jawnych credentiali — użyj zmiennych środowiskowych przekazywanych przez GH Actions
       credentials:
-        # we'll inject the actual username/password into these fields on the runner
-        username: @@ZAP_USER@@
-        password: @@ZAP_PASS@@
+        username: ${ZAP_USER}
+        password: ${ZAP_PASS}
   parameters: {}
 jobs:
 - type: activeScan
