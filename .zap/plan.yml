@@ -1,17 +1,14 @@
-# .zap/plan.yml (fixed)
 env:
   contexts:
   - name: login-flask
-    # <-- Use a concrete regex with escaped dot; do NOT use ${FLASKSHOP_URL} here
     includePaths:
+    - https://flaskshop.online
     - ^https://flaskshop\.online/.*$
     authentication:
       method: form
       parameters:
-        # Use concrete URLs here (not env placeholders) so ZAP knows the login page
         loginPageUrl: https://flaskshop.online/login
         loginRequestUrl: https://flaskshop.online/login
-        # Use ZAP token placeholders in the login body
         loginRequestBody: "username={%username%}&password={%password%}&submit=Log+in"
       verification:
         method: autodetect
@@ -26,12 +23,11 @@ env:
     users:
     - name: zap-user
       credentials:
-        # Keep secrets as env references so CI doesn't leak them
-        username: ${ZAP_USER}
         password: ${ZAP_PASS}
+        username: ${ZAP_USER}
   parameters: {}
-
 jobs:
 - type: activeScan
   parameters: {}
   policyDefinition: {}
+
