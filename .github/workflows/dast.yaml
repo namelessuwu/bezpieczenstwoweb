@@ -42,8 +42,6 @@ jobs:
           target: ${{ secrets.TARGET_URL }}
           cmd_options: > 
             -n .zap/login-flask2.context
-            -z "auth.username=${{ secrets.ZAP_USER }}"
-            -z "auth.password=${{ secrets.ZAP_PASS }}"
             -r zap-auth-report.html
             -J zap-auth-report.json
 
