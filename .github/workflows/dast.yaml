@@ -1,4 +1,3 @@
-# .github/workflows/zap-af.yml
 name: ZAP Automation Framework scan
 
 on:
@@ -13,57 +12,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Render the plan from the template using a short Python snippet
-      - name: Render ZAP plan from template (no secrets in repo)
-        shell: bash
-        env:
-          FLASKSHOP_URL: ${{ secrets.TARGET_URL }}
-          ZAP_USER: ${{ secrets.ZAP_USER }}
-          ZAP_PASS: ${{ secrets.ZAP_PASS }}
-        run: |
-          # ensure the .zap directory exists
-          mkdir -p .zap
-          python3 - <<'PY'
-import os, re, sys
-tpl_path = ".zap/plan.template.yml"
-out_path = ".zap/plan.yml"
-t = open(tpl_path, "r", encoding="utf-8").read()
-# raw URL (without trailing slash)
-base = os.environ["FLASKSHOP_URL"].rstrip("/")
-# build a regex-escaped host for includePaths; escape dots
-escaped = re.escape(base)
-# replace placeholders safely
-t = t.replace("@@FLASKSHOP_URL@@", base)
-t = t.replace("@@FLASKSHOP_URL_ESCAPED@@", escaped)
-t = t.replace("@@ZAP_USER@@", os.environ["ZAP_USER"])
-t = t.replace("@@ZAP_PASS@@", os.environ["ZAP_PASS"])
-open(out_path, "w", encoding="utf-8").write(t)
-print("Rendered", out_path)
-PY
-
-      - name: Show plan snippet for debug (non-secret part)
-        if: ${{ always() }}
-        run: |
-          echo "Showing includePaths and login URL portion (no secrets printed)..."
-          sed -n '1,60p' .zap/plan.yml
-
       - name: Run ZAP Automation Framework
         uses: zaproxy/action-af@v0.2.0
         with:
           plan: '.zap/plan.yml'
           docker_env_vars: |
-            # not strictly required since we already baked secrets into plan,
-            # but keeping FLASKSHOP_URL for any other uses
             FLASKSHOP_URL
+            ZAP_USER
+            ZAP_PASS
         env:
-          FLASKSHOP_URL: ${{ secrets.TARGET_URL }}
-          # don't need to pass ZAP_USER/ZAP_PASS here because plan contains credentials,
-          # but it's safe to include if you prefer a different approach
+          FLASKSHOP_URL: ${{ secrets.FLASKSHOP_URL }}
           ZAP_USER: ${{ secrets.ZAP_USER }}
           ZAP_PASS: ${{ secrets.ZAP_PASS }}
-
-      # Remove generated plan after run to limit exposure (optional)
-      - name: Remove generated plan
-        if: ${{ always() }}
-        run: |
-          shred -u .zap/plan.yml || rm -f .zap/plan.yml || true
