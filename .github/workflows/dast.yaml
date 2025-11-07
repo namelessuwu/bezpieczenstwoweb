@@ -1,4 +1,4 @@
-name: DAST - ZAP Authenticated Full Scan
+name: DAST - ZAP Authenticated Full Scan (AF)
 
 on:
   workflow_dispatch:
@@ -9,40 +9,36 @@ jobs:
   zap-auth:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Show zap plan (sanity - no secrets)
+      - name: Show plan (no secrets)
         run: |
-          echo "Plan files in .zap:"
+          echo "Files in .zap:"
           ls -la .zap || true
-          echo "Preview plan header (no secrets):"
+          echo "Plan preview (no secrets):"
           sed -n '1,200p' .zap/plan.yml || true
 
       - name: Run ZAP Automation Framework plan
         uses: zaproxy/action-af@v0.2.0
         with:
           plan: '.zap/plan.yml'
-          # expose the names (one per line) to be injected into the action's docker container
           docker_env_vars: |
             TARGET_URL
             ZAP_USER
             ZAP_PASS
             REPORT_NAME
         env:
-          # supply values from GitHub Secrets (never store these in the repo)
           TARGET_URL: ${{ secrets.TARGET_URL }}
           ZAP_USER:    ${{ secrets.ZAP_USER }}
           ZAP_PASS:    ${{ secrets.ZAP_PASS }}
-          # optional: custom report filename
           REPORT_NAME: zap-auth-report.html
 
-      - name: Collect reports / artifacts
-        # action-af will create reports where the plan directs (adjust paths in plan.yml)
+      - name: Upload reports
         uses: actions/upload-artifact@v4
         with:
           name: zap-auth-reports
           path: |
-            .github/zap/output/**/*
-            zap-auth-report.* 
+            .zap/output/**
+            zap-auth-report.*
             zap-auth-report.json
