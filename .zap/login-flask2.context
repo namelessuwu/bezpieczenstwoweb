@@ -4,6 +4,7 @@
         <name>login-flask</name>
         <desc/>
         <inscope>true</inscope>
+        <includepaths>https://flaskshop.online</includepaths>
         <incregexes>^https://flaskshop\.online/.*$</incregexes>
         <tech>
             <include>Db</include>
@@ -83,3 +84,4 @@
         </authorization>
     </context>
 </configuration>
+
