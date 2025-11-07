@@ -1,77 +1,33 @@
-# .zap/plan.yml
-version: "2.1"
-
-# Use top-level 'env' (many examples/autogen templates use this form)
 env:
-  # List of contexts for this environment:
   contexts:
-    - name: flaskshop
-      # Top-level URL(s) — everything under these will be considered inside the context
-      urls:
-        - "${FLASKSHOP_URL}"
-      # (optional) include/exclude paths can be added if you need to narrow scope:
-      # includePaths:
-      #   - "${FLASKSHOP_URL}.*"
-      # Authentication & session management can be defined here or via jobs
-      authentication:
-        method: formBasedAuthentication
-        parameters:
-          # login URL (adjust path if your app uses /auth/login or similar)
-          loginUrl: "${FLASKSHOP_URL}/login"
-          # login request body (change param names to match your form)
-          loginRequestData: "username=${ZAP_USER}&password=${ZAP_PASS}"
-      sessionManagement:
-        method: cookieBasedSessionManagement
-      users:
-        - name: zap-user
-          enabled: true
-          credentials:
-            username: "${ZAP_USER}"
-            password: "${ZAP_PASS}"
-
-# Jobs list
+  - name: login-flask
+    includePaths:
+    - ^${FLASKSHOP_URL}.*$
+    authentication:
+      method: form
+      parameters:
+        loginPageUrl: ${FLASKSHOP_URL}/login
+        loginRequestUrl: ${FLASKSHOP_URL}/login
+        # użyj placeholderów zamiast jawnego hasła
+        loginRequestBody: "username={%username%}&password={%password%}&submit=Log+in"
+      verification:
+        method: autodetect
+        pollFrequency: 60
+        pollUnits: requests
+        pollUrl: ""
+        pollPostData: ""
+    sessionManagement:
+      method: cookie
+    technology: {}
+    structure: {}
+    users:
+    - name: zap-user
+      # zamiast jawnych credentiali — użyj zmiennych środowiskowych przekazywanych przez GH Actions
+      credentials:
+        username: ${ZAP_USER}
+        password: ${ZAP_PASS}
+  parameters: {}
 jobs:
-  # 1) Spider the context (will use the first/only defined context by default)
-  - type: spider
-    name: spider
-    parameters:
-      # context name to use (optional if you only have one context)
-      context: flaskshop
-      # optional: the subtree to spider (default is entire context)
-      url: "${FLASKSHOP_URL}"
-      maxDepth: 5
-      # optional: run as a specific user (if you want the spider to authenticate)
-      user: zap-user
-
-  # 2) AJAX spider (often useful for JS-heavy apps)
-  - type: ajaxSpider
-    name: ajax-spider
-    parameters:
-      context: flaskshop
-      url: "${FLASKSHOP_URL}"
-      user: zap-user
-      maxDuration: 2     # minutes
-
-  # 3) Passive scan (runs automatically while crawling)
-  - type: passiveScan
-    name: passive-scan
-    parameters:
-      context: flaskshop
-
-  # 4) Active scan (intrusive — run only on staging or with permission)
-  - type: activeScan
-    name: active-scan
-    parameters:
-      context: flaskshop
-      url: "${FLASKSHOP_URL}"
-      user: zap-user
-      policy: "Default Policy"
-      maxRuleDurationInMins: 5
-      maxScanDurationInMins: 60
-
-# Reports
-reports:
-  - type: html
-    fileName: zap-report.html
-  - type: xml
-    fileName: zap-report.xml
+- type: activeScan
+  parameters: {}
+  policyDefinition: {}
