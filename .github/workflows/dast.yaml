@@ -41,9 +41,9 @@ jobs:
         with:
           target: 'https://flaskshop.online'
           cmd_options: > 
+            -j
+            -U ${{ secrets.ZAP_USER }}
             -n .zap/login-flask2.context
-            -r zap-auth-report.html
-            -J zap-auth-report.json
 
       - name: Upload reports
         uses: actions/upload-artifact@v4
