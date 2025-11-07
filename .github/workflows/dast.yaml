@@ -9,43 +9,40 @@ jobs:
   zap-auth:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      
-      - name: show zap folder
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Show zap plan (sanity - no secrets)
         run: |
-          echo ".zap files:"
-          ls -la .zap || true
-          echo "Show users section (no secrets):"
-          sed -n '1,200p' .zap/login-flask2.context | sed -n '/<users>/,/<\/users>/p' || true
+          echo "Plan files in .github/zap:"
+          ls -la .github/zap || true
+          echo "Preview plan header (no secrets):"
+          sed -n '1,200p' .github/zap/plan.yml || true
 
-      - name: Context Setup - replace user/pass placeholders with secrets
-        env:
-          B64USER: ${{ secrets.B64USER }}
-          B64PASS: ${{ secrets.B64PASS }}
-        run: |
-          if [ ! -f .zap/login-flask2.context ]; then
-            echo "Context file .zap/login-flask2.context not found!"
-            exit 1
-          fi
-          echo "Replacing PLACEHOLDERUSER..."
-          sed -i "s|PLACEHOLDERUSER|${B64USER}|g" .zap/login-flask2.context
-          echo "Replacing PASS_PLACEHOLDER..."
-          sed -i "s|PLACEHOLDERPASSWORD|${B64PASS}|g" .zap/login-flask2.context
-          echo "Placeholders replaced (content not printed for security)."
-
-      - name: Show resulting users line (sanity, no secrets)
-        run: sed -n '/<users>/,/<\/users>/p' .zap/login-flask2.context | sed 's/^[^>]*>/>/;s/<\\/user.*$//' || true
-
-      - name: Authenticated ZAP Full Scan
-        uses: zaproxy/action-full-scan@v0.12.0
+      - name: Run ZAP Automation Framework plan
+        uses: zaproxy/action-af@v0.2.0
         with:
-          target: 'https://flaskshop.online'
-          cmd_options: > 
-            -a
+          plan: '.github/zap/plan.yml'
+          # expose the names (one per line) to be injected into the action's docker container
+          docker_env_vars: |
+            TARGET_URL
+            ZAP_USER
+            ZAP_PASS
+            REPORT_NAME
+        env:
+          # supply values from GitHub Secrets (never store these in the repo)
+          TARGET_URL: ${{ secrets.TARGET_URL }}
+          ZAP_USER:    ${{ secrets.ZAP_USER }}
+          ZAP_PASS:    ${{ secrets.ZAP_PASS }}
+          # optional: custom report filename
+          REPORT_NAME: zap-auth-report.html
 
-      - name: Upload reports
+      - name: Collect reports / artifacts
+        # action-af will create reports where the plan directs (adjust paths in plan.yml)
         uses: actions/upload-artifact@v4
         with:
           name: zap-auth-reports
-          path: zap-auth-report.*
-
+          path: |
+            .github/zap/output/**/*
+            zap-auth-report.* 
+            zap-auth-report.json
