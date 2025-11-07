@@ -66,9 +66,9 @@ jobs:
       - name: Run ZAP configuration & authenticated scan
         env:
           ZAP_API_KEY: ${{ secrets.ZAP_API_KEY }}
-          TARGET_URL: ${{ secrets.TARGET_URL }}       # e.g. https://staging.example.com
-          LOGIN_URL: ${{ secrets.LOGIN_URL }}         # e.g. https://staging.example.com/login
-          LOGIN_POST_DATA: ${{ secrets.LOGIN_POST_DATA }} # e.g. username={%username%}&password={%password%}
+          TARGET_URL: ${{ secrets.TARGET_URL }}      
+          LOGIN_URL: ${{ secrets.LOGIN_URL }}         
+          LOGIN_POST_DATA: ${{ secrets.LOGIN_POST_DATA }}
           AUTH_USERNAME: ${{ secrets.AUTH_USERNAME }}
           AUTH_PASSWORD: ${{ secrets.AUTH_PASSWORD }}
           ZAP_HOST: 127.0.0.1
