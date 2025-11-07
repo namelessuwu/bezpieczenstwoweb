@@ -1,7 +1,8 @@
 env:
   contexts:
     - name: login-flask
-      # główny scope (możesz zostawić includePaths albo użyć urls/urlsRegex)
+      urls:
+        - ${TARGET_URL}
       includePaths:
         - ^${TARGET_URL}.*$
       authentication:
