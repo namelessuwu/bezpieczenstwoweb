@@ -33,3 +33,8 @@ jobs:
     context: login-flask
     url: https://flaskshop.online
 
+- type: activeScan
+  parameters:
+    context: login-flask
+    url: https://flaskshop.online
+
