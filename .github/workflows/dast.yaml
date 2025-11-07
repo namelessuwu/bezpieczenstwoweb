@@ -14,15 +14,15 @@ jobs:
 
       - name: Show zap plan (sanity - no secrets)
         run: |
-          echo "Plan files in .github/zap:"
-          ls -la .github/zap || true
+          echo "Plan files in .zap:"
+          ls -la .zap || true
           echo "Preview plan header (no secrets):"
-          sed -n '1,200p' .github/zap/plan.yml || true
+          sed -n '1,200p' .zap/plan.yml || true
 
       - name: Run ZAP Automation Framework plan
         uses: zaproxy/action-af@v0.2.0
         with:
-          plan: '.github/zap/plan.yml'
+          plan: '.zap/plan.yml'
           # expose the names (one per line) to be injected into the action's docker container
           docker_env_vars: |
             TARGET_URL
