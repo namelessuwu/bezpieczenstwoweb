@@ -17,10 +17,11 @@ jobs:
 
       - name: Start ZAP Docker (daemon)
         run: |
+          docker pull zaproxy/zap-stable:latest
           docker run --name zap-dast -u zap -d \
-            -p ${ZAP_PORT}:${ZAP_PORT} \
-            owasp/zap2docker-stable:latest \
-            zap.sh -daemon -host 0.0.0.0 -port ${ZAP_PORT} -config api.disablekey=false -config api.key=${{ secrets.ZAP_API_KEY }}
+            -p 8080:8080 \
+            zaproxy/zap-stable:latest \
+            zap.sh -daemon -host 0.0.0.0 -port 8080 -config api.disablekey=false -config api.key=${ZAP_API_KEY}
 
       - name: Wait for ZAP to be ready
         # simple readiness loop
