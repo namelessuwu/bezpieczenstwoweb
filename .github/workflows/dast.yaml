@@ -1,4 +1,4 @@
-name: DAST - ZAP Authenticated Full Scan (docker-run debug, fixed)
+name: ZAP Authenticated DAST
 
 on:
   workflow_dispatch:
@@ -6,48 +6,56 @@ on:
     branches: [ main ]
 
 jobs:
-  zap-docker:
+  zap-auth-scan:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
-
+    env:
+      ZAP_PORT: 8080
+      ZAP_HOST: 127.0.0.1
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Show .zap folder (no secrets)
+      - name: Start ZAP Docker (daemon)
         run: |
-          echo "Files in .zap:"
-          ls -la .zap || true
-          echo "Preview plan header (no secrets):"
-          sed -n '1,200p' .zap/plan.yml || true
+          docker run --name zap-dast -u zap -d \
+            -p ${ZAP_PORT}:${ZAP_PORT} \
+            owasp/zap2docker-stable:latest \
+            zap.sh -daemon -host 0.0.0.0 -port ${ZAP_PORT} -config api.disablekey=false -config api.key=${{ secrets.ZAP_API_KEY }}
 
-      - name: Run ZAP docker with explicit envs and debug inside container
+      - name: Wait for ZAP to be ready
+        # simple readiness loop
+        run: |
+          for i in $(seq 1 30); do
+            echo "Checking ZAP ($i)..."
+            if curl -s "http://${ZAP_HOST}:${ZAP_PORT}/JSON/core/view/version/?apikey=${{ secrets.ZAP_API_KEY }}" | grep -q "version"; then
+              echo "ZAP is ready"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "ZAP did not become ready"
+          docker logs zap-dast || true
+          exit 1
+
+      - name: Make scan script executable
+        run: chmod +x ci/zap-config-and-scan.sh
+
+      - name: Run ZAP configuration & authenticated scan
         env:
-          TARGET_URL: ${{ secrets.TARGET_URL }}
-          ZAP_USER:    ${{ secrets.ZAP_USER }}
-          ZAP_PASS:    ${{ secrets.ZAP_PASS }}
+          ZAP_API_KEY: ${{ secrets.ZAP_API_KEY }}
+          TARGET_URL: ${{ secrets.TARGET_URL }}       
+          LOGIN_URL: ${{ secrets.LOGIN_URL }}         
+          LOGIN_POST_DATA: ${{ secrets.LOGIN_POST_DATA }}
+          AUTH_USERNAME: ${{ secrets.ZAP_USER }}
+          AUTH_PASSWORD: ${{ secrets.ZAP_PASS }}
+          ZAP_HOST: 127.0.0.1
+          ZAP_PORT: 8080
         run: |
-          docker run --rm -v "$PWD":/zap/wrk:rw --network=host \
-            -e TARGET_URL="${TARGET_URL}" \
-            -e ZAP_USER="${ZAP_USER}" \
-            -e ZAP_PASS="${ZAP_PASS}" \
-            -e REPORT_NAME="zap-auth-report.html" \
-            ghcr.io/zaproxy/zaproxy:stable \
-            sh -c '\
-              echo "=== inside-container env presence check ==="; \
-              if [ -z "$TARGET_URL" ]; then echo "TARGET_URL is EMPTY"; else echo "TARGET_URL is SET"; fi; \
-              if [ -z "$ZAP_USER" ]; then echo "ZAP_USER is EMPTY"; else echo "ZAP_USER is SET"; fi; \
-              if [ -z "$ZAP_PASS" ]; then echo "ZAP_PASS is EMPTY"; else echo "ZAP_PASS is SET"; fi; \
-              echo "=== running ZAP autorun ==="; \
-              zap.sh -cmd -autorun /zap/wrk/.zap/plan.yml \
-            '
+          .zap/zap-config-and-scan.sh
 
-      - name: Upload ZAP reports (artifacts)
+      - name: Upload ZAP HTML report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: zap-auth-reports
-          path: |
-            .zap/output/**
-            zap-auth-report.*
-            zap-auth-report.json
+          name: zap-report
+          path: zap-report.html
