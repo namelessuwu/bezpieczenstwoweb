@@ -1,0 +1,64 @@
+type: Automation
+config:
+  api:
+    key: ""
+  targets:
+    - "${TARGET_URL}"
+  reports:
+    - filename: "${REPORT_NAME}"
+      format: "html"
+      template: "traditional"
+
+contexts:
+  - name: "CIContext"
+    include:
+      - "${TARGET_URL}.*"
+    sessionManagement:
+      method: "cookieBasedSessionManagement"
+    authentication:
+      # Example: form-based authentication. Adapt loginUrl/postData to your app.
+      method: "formBasedAuthentication"
+      loginUrl: "${TARGET_URL}/login"
+      loginRequestData: "username={%username%}&password={%password%}"
+    # define a test user that uses env vars for credentials
+    users:
+      - name: "ci-user"
+        enabled: true
+        credentials:
+          username: "${ZAP_USER}"
+          password: "${ZAP_PASS}"
+
+jobs:
+  - name: Spider (context + user)
+    type: spider
+    target: "${TARGET_URL}"
+    context: "CIContext"
+    user: "ci-user"
+    options:
+      maxDepth: 5
+
+  - name: AjaxSpider
+    type: spiderAjax
+    target: "${TARGET_URL}"
+    context: "CIContext"
+    user: "ci-user"
+    options:
+      maxDuration: 120
+
+  - name: Authenticated Active Scan
+    type: activeScan
+    target: "${TARGET_URL}"
+    context: "CIContext"
+    user: "ci-user"
+    options:
+      politeness: "default"
+      scanPolicyName: "Default Policy"
+
+  - name: Generate Reports
+    type: report
+    options:
+      formats:
+        - html
+        - json
+      filename: "${REPORT_NAME}"
+      outdir: ".github/zap/output"
