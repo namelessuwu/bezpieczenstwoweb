@@ -16,12 +16,29 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Make scan script executable
+        run: chmod +x .zap/zap-config-and-scan.sh
+
+      - name: Validate required secrets
+        run: |
+          missing=""
+          for v in ZAP_API_KEY TARGET_URL LOGIN_URL LOGIN_POST_DATA ZAP_USER ZAP_PASS; do
+            if [ -z "${{ secrets[$v] }}" ]; then
+              missing="${missing} $v"
+            fi
+          done
+          if [ -n "$missing" ]; then
+            echo "ERROR: Missing repository secrets:$missing"
+            echo "Please create them in Settings → Secrets and variables → Actions"
+            exit 1
+          fi
+        shell: bash
+
       - name: Remove old zap container (best-effort)
         run: docker rm -f zap-dast >/dev/null 2>&1 || true
 
       - name: Start ZAP Docker (daemon) (force amd64)
         run: |
-          # Start ZAP daemon. If you prefer GHCR use ghcr.io/zaproxy/zap-stable:latest
           docker run --name zap-dast -u zap -d \
             --platform linux/amd64 \
             -p ${ZAP_PORT}:${ZAP_PORT} \
@@ -39,17 +56,14 @@ jobs:
           APIKEY=${APIKEY:-}
           for i in $(seq 1 60); do   # 60 * 5s = 300s max
             echo "Checking ZAP ($i)..."
-            # Try HTTP from runner to the mapped port
             if curl -s "http://${ZAP_HOST}:${ZAP_PORT}/JSON/core/view/version/?apikey=${APIKEY}" | grep -q '"version"'; then
               echo "ZAP ready (runner -> container)"
               exit 0
             fi
-            # Try curling from inside the container (if container running)
             if docker ps --filter "name=zap-dast" --format '{{.Names}}' | grep -q zap-dast; then
               echo "Trying curl inside container..."
               docker exec zap-dast sh -c "curl -s http://127.0.0.1:${ZAP_PORT}/JSON/core/view/version/?apikey=${APIKEY}" | grep -q '"version"' && { echo "ZAP ready (inside container)"; exit 0; } || true
             fi
-            # Show logs occasionally to aid debugging
             if [ $(( i % 6 )) -eq 0 ]; then
               echo "---- last container logs (tail 80) ----"
               docker logs zap-dast --tail 80 || true
@@ -61,16 +75,13 @@ jobs:
           docker logs zap-dast --tail 200 || true
           exit 1
 
-      - name: Show container status & logs (debug)
+      - name: Show container status & logs on failure
         if: failure()
         run: |
           echo "=== docker ps -a ==="
           docker ps -a --filter "name=zap-dast"
           echo "=== last 200 lines of logs ==="
           docker logs zap-dast --tail 200 || true
-
-      - name: Make scan script executable
-        run: chmod +x .zap/zap-config-and-scan.sh
 
       - name: Print env info (for debug)
         run: |
@@ -91,7 +102,7 @@ jobs:
           ZAP_PORT: 8080
         run: |
           set -euo pipefail
-          echo "[*] Running scan script: ./.zap/zap-config-and-scan.sh"
+          echo "[*] Running scan script: .zap/zap-config-and-scan.sh"
           ./.zap/zap-config-and-scan.sh
 
       - name: Upload ZAP HTML report
