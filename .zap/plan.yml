@@ -38,3 +38,29 @@ jobs:
     context: login-flask
     url: https://flaskshop.online
 
+- type: report
+   name: HTML Report
+   parameters:
+     template: traditional-html
+     reportDir: /zap/wrk/.zap/plan-results/
+     reportFile: zap-report.html
+     reportTitle: "FlaskShop ZAP HTML Report"
+     displayReport: false
+
+- type: report
+  name: XML Report
+   parameters:
+     template: traditional-xml
+     reportDir: /zap/wrk/.zap/plan-results/
+     reportFile: zap-report.xml
+     reportTitle: "FlaskShop ZAP XML Report"
+     displayReport: false
+
+ - type: report
+   name: JSON Report
+   parameters:
+     template: traditional-json
+     reportDir: /zap/wrk/.zap/plan-results/
+     reportFile: zap-report.json
+     reportTitle: "FlaskShop ZAP JSON Report"
+     displayReport: true
