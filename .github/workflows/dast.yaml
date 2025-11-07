@@ -20,6 +20,7 @@ jobs:
           ZAP_USER: ${{ secrets.ZAP_USER }}
           ZAP_PASS: ${{ secrets.ZAP_PASS }}
         with:
+          target: https://flaskshop.online
           plan: '.zap/plan.yml'
           docker_env_vars: |
             FLASKSHOP_URL
