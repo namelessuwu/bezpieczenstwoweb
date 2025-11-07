@@ -29,6 +29,8 @@ env:
   parameters: {}
 jobs:
 - type: activeScan
-  parameters: {}
+  parameters:
+    context: login-flask
+    url: https://flaskshop.online
   policyDefinition: {}
 
