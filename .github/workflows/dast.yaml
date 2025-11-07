@@ -1,4 +1,4 @@
-name: DAST - ZAP Authenticated Full Scan
+name: ZAP Automation Framework scan
 
 on:
   workflow_dispatch:
@@ -6,49 +6,20 @@ on:
     branches: [ main ]
 
 jobs:
-  zap-auth:
+  zap-scan:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      
-      - name: show zap folder
-        run: |
-          echo ".zap files:"
-          ls -la .zap || true
-          echo "Show users section (no secrets):"
-          sed -n '1,200p' .zap/login-flask2.context | sed -n '/<users>/,/<\/users>/p' || true
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Context Setup - replace user/pass placeholders with secrets
+      - name: Run ZAP Automation Framework
+        uses: zaproxy/action-af@v0.2.0
+        
         env:
-          B64USER: ${{ secrets.B64USER }}
-          B64PASS: ${{ secrets.B64PASS }}
-        run: |
-          if [ ! -f .zap/login-flask2.context ]; then
-            echo "Context file .zap/login-flask2.context not found!"
-            exit 1
-          fi
-          echo "Replacing PLACEHOLDERUSER..."
-          sed -i "s|PLACEHOLDERUSER|${B64USER}|g" .zap/login-flask2.context
-          echo "Replacing PASS_PLACEHOLDER..."
-          sed -i "s|PLACEHOLDERPASSWORD|${B64PASS}|g" .zap/login-flask2.context
-          echo "Placeholders replaced (content not printed for security)."
-
-      - name: Show resulting users line (sanity, no secrets)
-        run: sed -n '/<users>/,/<\/users>/p' .zap/login-flask2.context | sed 's/^[^>]*>/>/;s/<\\/user.*$//' || true
-
-      - name: Authenticated ZAP Full Scan
-        uses: zaproxy/action-full-scan@v0.12.0
+          ZAP_USER: ${{ secrets.ZAP_USER }}
+          ZAP_PASS: ${{ secrets.ZAP_PASS }}
         with:
-          target: ${{ secrets.TARGET_URL }}
-          cmd_options: > 
-            -n .zap/login-flask2.context
-            -z "auth.username=${{ secrets.ZAP_USER }}"
-            -z "auth.password=${{ secrets.ZAP_PASS }}"
-            -r zap-auth-report.html
-            -J zap-auth-report.json
-
-      - name: Upload reports
-        uses: actions/upload-artifact@v4
-        with:
-          name: zap-auth-reports
-          path: zap-auth-report.*
+          plan: '.zap/plan.yml'
+          docker_env_vars: |
+            ZAP_USER
+            ZAP_PASS
