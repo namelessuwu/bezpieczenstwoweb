@@ -30,6 +30,25 @@ jobs:
           ZAP_USER: ${{ secrets.ZAP_USER }}
           ZAP_PASS: ${{ secrets.ZAP_PASS }}
 
+      - name: Collect ZAP reports into repository root
+        if: always()
+        run: |
+          # Znajdź wszystkie pliki nazwane zap-report.* i skopiuj je na root
+          FOUND=false
+          while IFS= read -r f; do
+            echo "Found report: $f"
+            cp -v "$f" .
+            FOUND=true
+          done < <(find . -type f -iname 'zap-report.*' -print || true)
+
+          if [ "$FOUND" = false ]; then
+            echo "No zap-report.* files found in workspace. Listing directories for manual inspection:"
+            ls -la
+            # dodatkowe wyszukiwanie szczegółowe - pokaż potencjalne katalogi .zap/plan-results
+            ls -la .zap || true
+            find . -maxdepth 3 -type f -print | sed -n '1,200p' || true
+          fi
+
       - name: Upload ZAP reports
         uses: actions/upload-artifact@v4
         with:
