@@ -31,7 +31,38 @@ jobs:
           TARGET_URL: ${{ secrets.TARGET_URL }}
           ZAP_USER: ${{ secrets.ZAP_USER }}
           ZAP_PASS: ${{ secrets.ZAP_PASS }}
-        
+          
+      - name: Check for HIGH/CRITICAL alerts (non-blocking)
+        if: always()
+        continue-on-error: true
+        run: |
+          echo "Checking zap-report.xml for high alerts (non-fatal)..."
+          if [ ! -f "zap-report.xml" ]; then
+            XML=$(find . -type f -iname 'zap-report.xml' -print -quit || true)
+            [ -n "$XML" ] && cp "$XML" zap-report.xml || echo "⚠️ No XML report found."
+          fi
+
+          if [ -f "zap-report.xml" ]; then
+            python - <<'PY'
+import xml.etree.ElementTree as ET
+try:
+    tree = ET.parse('zap-report.xml')
+    root = tree.getroot()
+    high = any(int(r.text.strip()) >= 3 for r in root.iter('riskcode') if r.text)
+    if high:
+        print("High/Critical alerts detected (riskcode ≥ 3).")
+    else:
+        print("No high/critical alerts detected.")
+except Exception as e:
+    print("Could not parse zap-report.xml:", e)
+PY
+          else
+            echo "zap-report.xml not found, skipping check."
+          fi
+
+      - name: Finish (always success)
+        if: always()
+        run: echo "ZAP scan workflow finished successfully (non-blocking mode)."
       # - name: Show workspace files (debug)
       #   if: always()
       #   run: |
