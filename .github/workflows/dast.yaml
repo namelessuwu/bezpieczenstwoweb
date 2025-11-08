@@ -8,12 +8,12 @@ on:
 jobs:
   zap-scan:
     runs-on: ubuntu-latest
-    steps:                 # ✅ correct level under job
-      - name: Checkout     # ✅ dash aligns under steps
+    steps:                 
+      - name: Checkout     
         uses: actions/checkout@v4
 
       - name: Check site reachable
-        run: |             # ✅ multiline block under run
+        run: |             
           echo "Checking ${TARGET_URL}"
           curl -v --max-time 20 --silent --show-error --fail "${TARGET_URL}" || (echo "Site unreachable from runner" && exit 1)
         env:
@@ -23,7 +23,7 @@ jobs:
         uses: zaproxy/action-af@v0.2.0
         with:
           plan: '.zap/plan.yml'
-          docker_env_vars: |    # ✅ correct indentation for multiline string
+          docker_env_vars: |   
             TARGET_URL
             ZAP_USER
             ZAP_PASS
