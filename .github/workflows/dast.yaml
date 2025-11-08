@@ -8,12 +8,12 @@ on:
 jobs:
   zap-scan:
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
+    steps:                 # ✅ correct level under job
+      - name: Checkout     # ✅ dash aligns under steps
         uses: actions/checkout@v4
 
       - name: Check site reachable
-        run: |
+        run: |             # ✅ multiline block under run
           echo "Checking ${TARGET_URL}"
           curl -v --max-time 20 --silent --show-error --fail "${TARGET_URL}" || (echo "Site unreachable from runner" && exit 1)
         env:
@@ -23,7 +23,7 @@ jobs:
         uses: zaproxy/action-af@v0.2.0
         with:
           plan: '.zap/plan.yml'
-          docker_env_vars: |
+          docker_env_vars: |    # ✅ correct indentation for multiline string
             TARGET_URL
             ZAP_USER
             ZAP_PASS
@@ -31,31 +31,38 @@ jobs:
           TARGET_URL: ${{ secrets.TARGET_URL }}
           ZAP_USER: ${{ secrets.ZAP_USER }}
           ZAP_PASS: ${{ secrets.ZAP_PASS }}
-          
+
       - name: Check for HIGH/CRITICAL alerts (non-blocking)
         if: always()
         continue-on-error: true
         run: |
           echo "Checking zap-report.xml for high alerts (non-fatal)..."
+          
           if [ ! -f "zap-report.xml" ]; then
             XML=$(find . -type f -iname 'zap-report.xml' -print -quit || true)
-            [ -n "$XML" ] && cp "$XML" zap-report.xml || echo "⚠️ No XML report found."
+            if [ -n "$XML" ]; then
+              cp "$XML" zap-report.xml || echo "Warning: failed to copy XML report"
+            else
+              echo "No XML report found."
+            fi
           fi
 
           if [ -f "zap-report.xml" ]; then
             python - <<'PY'
-import xml.etree.ElementTree as ET
-try:
-    tree = ET.parse('zap-report.xml')
-    root = tree.getroot()
-    high = any(int(r.text.strip()) >= 3 for r in root.iter('riskcode') if r.text)
-    if high:
-        print("High/Critical alerts detected (riskcode ≥ 3).")
-    else:
-        print("No high/critical alerts detected.")
-except Exception as e:
-    print("Could not parse zap-report.xml:", e)
-PY
+            import xml.etree.ElementTree as ET
+            
+            try:
+              tree = ET.parse('zap-report.xml')
+              root = tree.getroot()
+              high = any(int(r.text.strip()) >= 3 for r in root.iter('riskcode') if r.text)
+              if high:
+              print("High/Critical alerts detected (riskcode >= 3).")
+              else:
+                print("No high/critical alerts detected.")
+            except Exception as e:
+              print("Could not parse zap-report.xml:", e)
+          
+            PY
           else
             echo "zap-report.xml not found, skipping check."
           fi
@@ -63,41 +70,3 @@ PY
       - name: Finish (always success)
         if: always()
         run: echo "ZAP scan workflow finished successfully (non-blocking mode)."
-      # - name: Show workspace files (debug)
-      #   if: always()
-      #   run: |
-      #     echo "Workspace root listing:"
-      #     ls -la
-      #     echo "Find zap-report files (any location):"
-      #     find . -type f -iname 'zap-report*' -print || true
-
-      # - name: Copy found ZAP reports to repository root
-      #   if: always()
-      #   run: |
-      #     FOUND=false
-      #     while IFS= read -r f; do
-      #       echo "Copying $f to repo root"
-      #       cp -v "$f" .
-      #       FOUND=true
-      #     done < <(find /zap/wrk -maxdepth 3 -type f -iname 'zap-report*' -print || true)
-      #     # fallback: search workspace if the above found nothing
-      #     if [ "$FOUND" = false ]; then
-      #       while IFS= read -r f; do
-      #         echo "Fallback copy $f to repo root"
-      #         cp -v "$f" .
-      #         FOUND=true
-      #       done < <(find . -type f -iname 'zap-report*' -print || true)
-      #     fi
-      #     if [ "$FOUND" = false ]; then
-      #       echo "No zap-report files were found."
-      #     fi
-
-      # - name: Upload ZAP reports
-      #   if: always()
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: zap-reports
-      #     path: |
-      #       zap-report.html
-      #       zap-report.xml
-      #       zap-report.json
