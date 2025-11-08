@@ -32,41 +32,48 @@ jobs:
           ZAP_USER: ${{ secrets.ZAP_USER }}
           ZAP_PASS: ${{ secrets.ZAP_PASS }}
 
-      - name: Check for HIGH/CRITICAL alerts (non-blocking)
+      - name: Upload ZAP reports
         if: always()
-        continue-on-error: true
-        run: |
-          echo "Checking zap-report.xml for high alerts (non-fatal)..."
-          
-          if [ ! -f "zap-report.xml" ]; then
-            XML=$(find . -type f -iname 'zap-report.xml' -print -quit || true)
-            if [ -n "$XML" ]; then
-              cp "$XML" zap-report.xml || echo "Warning: failed to copy XML report"
-            else
-              echo "No XML report found."
-            fi
-          fi
-
-          if [ -f "zap-report.xml" ]; then
-            python - <<'PY'
-            import xml.etree.ElementTree as ET
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-reports
+          path: |
+            zap-report.html
+            zap-report.xml
+            zap-report.json
+            .zap/plan-results/**/zap-report.html
+            .zap/plan-results/**/zap-report.xml
+            .zap/plan-results/**/zap-report.json
             
-            try:
-              tree = ET.parse('zap-report.xml')
-              root = tree.getroot()
-              high = any(int(r.text.strip()) >= 3 for r in root.iter('riskcode') if r.text)
-              if high:
-              print("High/Critical alerts detected (riskcode >= 3).")
-              else:
-                print("No high/critical alerts detected.")
-            except Exception as e:
-              print("Could not parse zap-report.xml:", e)
+  analyze-artifact:
+      runs-on: ubuntu-latest
+      needs: zap-scan
+      steps:
+      - name: Download zap-reports artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: zap-reports
+          path: downloaded_artifacts
           
-            PY
-          else
-            echo "zap-report.xml not found, skipping check."
-          fi
+      - name: Create GitHub Issue with HTML report (only if HIGH/CRITICAL)
+        if: ${{ needs.zap-scan.result == 'success' || needs.zap-scan.result == 'failure' }} && startsWith(needs.zap-scan.outcome, '') && steps.analyze.outputs.high_found == 'true'
+        # The condition above ensures the scan ran and the analyze step set high_found=true
+        uses: peter-evans/create-issue-from-file@v5
+        with:
+          title: "ZAP Scan — High/Critical alerts detected 🚨"
+          # Use the downloaded HTML report if present; fallback to XML if not
+          content-filepath: ${{ steps.analyze.outputs.html_path || steps.analyze.outputs.xml_path }}
+          labels: |
+            security
+            zap
+            automated-scan
+          assignees: |
+            # optional: add username(s) here, e.g. octocat
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Finish (always success)
-        if: always()
-        run: echo "ZAP scan workflow finished successfully (non-blocking mode)."
+      - name: Notify (no-op if no high found)
+        if: steps.analyze.outputs.high_found == 'false'
+        run: echo "No high/critical alerts detected — no issue created."
+
+      - name: Finish
+        run: echo "analyze-and-issue job completed."
