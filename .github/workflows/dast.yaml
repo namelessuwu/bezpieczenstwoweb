@@ -32,41 +32,41 @@ jobs:
           ZAP_USER: ${{ secrets.ZAP_USER }}
           ZAP_PASS: ${{ secrets.ZAP_PASS }}
         
-      - name: Show workspace files (debug)
-        if: always()
-        run: |
-          echo "Workspace root listing:"
-          ls -la
-          echo "Find zap-report files (any location):"
-          find . -type f -iname 'zap-report*' -print || true
+      # - name: Show workspace files (debug)
+      #   if: always()
+      #   run: |
+      #     echo "Workspace root listing:"
+      #     ls -la
+      #     echo "Find zap-report files (any location):"
+      #     find . -type f -iname 'zap-report*' -print || true
 
-      - name: Copy found ZAP reports to repository root
-        if: always()
-        run: |
-          FOUND=false
-          while IFS= read -r f; do
-            echo "Copying $f to repo root"
-            cp -v "$f" .
-            FOUND=true
-          done < <(find /zap/wrk -maxdepth 3 -type f -iname 'zap-report*' -print || true)
-          # fallback: search workspace if the above found nothing
-          if [ "$FOUND" = false ]; then
-            while IFS= read -r f; do
-              echo "Fallback copy $f to repo root"
-              cp -v "$f" .
-              FOUND=true
-            done < <(find . -type f -iname 'zap-report*' -print || true)
-          fi
-          if [ "$FOUND" = false ]; then
-            echo "No zap-report files were found."
-          fi
+      # - name: Copy found ZAP reports to repository root
+      #   if: always()
+      #   run: |
+      #     FOUND=false
+      #     while IFS= read -r f; do
+      #       echo "Copying $f to repo root"
+      #       cp -v "$f" .
+      #       FOUND=true
+      #     done < <(find /zap/wrk -maxdepth 3 -type f -iname 'zap-report*' -print || true)
+      #     # fallback: search workspace if the above found nothing
+      #     if [ "$FOUND" = false ]; then
+      #       while IFS= read -r f; do
+      #         echo "Fallback copy $f to repo root"
+      #         cp -v "$f" .
+      #         FOUND=true
+      #       done < <(find . -type f -iname 'zap-report*' -print || true)
+      #     fi
+      #     if [ "$FOUND" = false ]; then
+      #       echo "No zap-report files were found."
+      #     fi
 
-      - name: Upload ZAP reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: zap-reports
-          path: |
-            zap-report.html
-            zap-report.xml
-            zap-report.json
+      # - name: Upload ZAP reports
+      #   if: always()
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: zap-reports
+      #     path: |
+      #       zap-report.html
+      #       zap-report.xml
+      #       zap-report.json
