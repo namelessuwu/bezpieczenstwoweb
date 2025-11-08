@@ -46,25 +46,25 @@ jobs:
     name: HTML Report
     parameters:
       template: traditional-html
-      reportDir: "/zap/wrk/"
+      reportDir: "/.zap/raports/"
       reportFile: zap-report.html
       reportTitle: "FlaskShop ZAP HTML Report"
-      displayReport: false
+      displayReport: true
 
   - type: report
     name: XML Report
     parameters:
       template: traditional-xml
-      reportDir: "/zap/wrk/"
+      reportDir: "/.zap/raports/"
       reportFile: zap-report.xml
       reportTitle: "FlaskShop ZAP XML Report"
-      displayReport: false
+      displayReport: true
 
   - type: report
     name: JSON Report
     parameters:
       template: traditional-json
-      reportDir: "/zap/wrk/"
+      reportDir: "/.zap/raports/"
       reportFile: zap-report.json
       reportTitle: "FlaskShop ZAP JSON Report"
-      displayReport: false
+      displayReport: true
