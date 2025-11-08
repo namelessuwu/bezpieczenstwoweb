@@ -8,12 +8,12 @@ on:
 jobs:
   zap-scan:
     runs-on: ubuntu-latest
-    steps:                 
-      - name: Checkout     
+    steps:
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Check site reachable
-        run: |             
+        run: |
           echo "Checking ${TARGET_URL}"
           curl -v --max-time 20 --silent --show-error --fail "${TARGET_URL}" || (echo "Site unreachable from runner" && exit 1)
         env:
@@ -23,7 +23,7 @@ jobs:
         uses: zaproxy/action-af@v0.2.0
         with:
           plan: '.zap/plan.yml'
-          docker_env_vars: |   
+          docker_env_vars: |
             TARGET_URL
             ZAP_USER
             ZAP_PASS
@@ -44,36 +44,75 @@ jobs:
             .zap/plan-results/**/zap-report.html
             .zap/plan-results/**/zap-report.xml
             .zap/plan-results/**/zap-report.json
-            
+
   analyze-artifact:
-      runs-on: ubuntu-latest
-      needs: zap-scan
-      steps:
+    runs-on: ubuntu-latest
+    needs: zap-scan
+    steps:
       - name: Download zap-reports artifact
         uses: actions/download-artifact@v4
         with:
           name: zap-reports
           path: downloaded_artifacts
-          
-      - name: Create GitHub Issue with HTML report (only if HIGH/CRITICAL)
-        if: ${{ needs.zap-scan.result == 'success' || needs.zap-scan.result == 'failure' }} && startsWith(needs.zap-scan.outcome, '') && steps.analyze.outputs.high_found == 'true'
-        # The condition above ensures the scan ran and the analyze step set high_found=true
+      
+      - name: Analyze ZAP report (grep + awk, no python)
+        id: analyze
+        run: |
+          set -euo pipefail
+          XML=$(find downloaded_artifacts -type f -iname 'zap-report.xml' -print -quit || true)
+          HTML=$(find downloaded_artifacts -type f -iname 'zap-report.html' -print -quit || true)
+          echo "xml_path=${XML:-}" >> $GITHUB_OUTPUT
+          echo "html_path=${HTML:-}" >> $GITHUB_OUTPUT
+
+          if [ -z "${XML:-}" ]; then
+            echo "No XML report found in artifact."
+            echo "high_found=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          echo "Parsing riskcode values from: $XML"
+
+          # extract numeric riskcode values robustly using grep/sed/awk
+          # Works whether <riskcode>2</riskcode> appears on one line or with whitespace
+          # Use tr to squeeze newlines then grep to find digits, fallback safe default
+          RISKCODES=$(tr '\n' ' ' < "$XML" | grep -oP '(?<=<riskcode>)[0-9]+' || true)
+
+          if [ -z "$RISKCODES" ]; then
+            echo "No <riskcode> entries found."
+            echo "high_found=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # check if any riskcode >= 3
+          echo "$RISKCODES" | awk '
+            {
+              for(i=1;i<=NF;i++){
+                if($i+0 >= 3){
+                  print "high_found=true"
+                  exit 0
+                }
+              }
+              print "high_found=false"
+            }' > risk_check.txt
+
+          cat risk_check.txt
+          echo "$(cat risk_check.txt)" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Issue with ZAP report (only if high_found)
+        if: steps.analyze.outputs.high_found == 'true'
         uses: peter-evans/create-issue-from-file@v5
         with:
-          title: "ZAP Scan — High/Critical alerts detected 🚨"
-          # Use the downloaded HTML report if present; fallback to XML if not
+          title: "ZAP Scan — High/Critical alerts detected"
           content-filepath: ${{ steps.analyze.outputs.html_path || steps.analyze.outputs.xml_path }}
           labels: |
             security
             zap
             automated-scan
-          assignees: |
-            # optional: add username(s) here, e.g. octocat
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Notify (no-op if no high found)
+      - name: No-issue notice
         if: steps.analyze.outputs.high_found == 'false'
-        run: echo "No high/critical alerts detected — no issue created."
+        run: echo "No HIGH/CRITICAL alerts found — no issue created."
 
-      - name: Finish
-        run: echo "analyze-and-issue job completed."
+      - name: Done
+        run: echo "analyze-artifact job finished."
