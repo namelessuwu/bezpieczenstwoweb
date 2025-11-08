@@ -8,12 +8,12 @@ on:
 jobs:
   zap-scan:
     runs-on: ubuntu-latest
-    steps:                 
-      - name: Checkout     
+    steps:
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Check site reachable
-        run: |             
+        run: |
           echo "Checking ${TARGET_URL}"
           curl -v --max-time 20 --silent --show-error --fail "${TARGET_URL}" || (echo "Site unreachable from runner" && exit 1)
         env:
@@ -23,7 +23,7 @@ jobs:
         uses: zaproxy/action-af@v0.2.0
         with:
           plan: '.zap/plan.yml'
-          docker_env_vars: |   
+          docker_env_vars: |
             TARGET_URL
             ZAP_USER
             ZAP_PASS
@@ -49,20 +49,19 @@ jobs:
 
           if [ -f "zap-report.xml" ]; then
             python - <<'PY'
-            import xml.etree.ElementTree as ET
-            
-            try:
-              tree = ET.parse('zap-report.xml')
-              root = tree.getroot()
-              high = any(int(r.text.strip()) >= 3 for r in root.iter('riskcode') if r.text)
-              if high:
-              print("High/Critical alerts detected (riskcode >= 3).")
-              else:
-                print("No high/critical alerts detected.")
-            except Exception as e:
-              print("Could not parse zap-report.xml:", e)
-          
-            PY
+import xml.etree.ElementTree as ET
+
+try:
+    tree = ET.parse('zap-report.xml')
+    root = tree.getroot()
+    high = any(int(r.text.strip()) >= 3 for r in root.iter('riskcode') if r.text)
+    if high:
+        print("High/Critical alerts detected (riskcode >= 3).")
+    else:
+        print("No high/critical alerts detected.")
+except Exception as e:
+    print("Could not parse zap-report.xml:", e)
+PY
           else
             echo "zap-report.xml not found, skipping check."
           fi
