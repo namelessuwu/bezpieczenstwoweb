@@ -29,6 +29,12 @@ jobs:
       - name: Run CodeQL Analysis
         uses: github/codeql-action/analyze@v3
 
+      - name: "Upload artifact"
+        uses: actions/upload-artifact@v4
+        with:
+          name: SAST_raport
+          path: .
+
   triage:
     name: Create security issue if CodeQL finds high/critical alerts
     runs-on: ubuntu-latest
