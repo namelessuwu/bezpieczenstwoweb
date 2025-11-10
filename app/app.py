@@ -20,4 +20,9 @@ def load_user(user_id):
         return User(*user_data)
     return None
 
+@app.after_request
+def add_security_headers(response):
+    response.headers['X-Frame-Options'] = 'DENY'
+    return response
+
 import routes, errors
