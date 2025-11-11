@@ -23,12 +23,7 @@ def load_user(user_id):
 
 @app.after_request
 def add_security_headers(response):
-    response.headers['X-Frame-Options'] = 'DENY'  
-        
-    instance_id = os.environ.get("WEBSITE_INSTANCE_ID", "local")
-    response.headers['X-Instance-ID'] = instance_id
-    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
-    
+    response.headers['X-Frame-Options'] = 'DENY'    
     return response
 
 import routes, errors
