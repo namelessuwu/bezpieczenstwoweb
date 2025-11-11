@@ -174,3 +174,22 @@ def delete_user(user_id):
         abort(404)
     else:
         abort(403)
+
+@app.route('/cpu-burn')
+def cpu_burn():
+    import time
+    import math
+    start = time.time()
+    duration = 1  # czas w sekundach
+    while time.time() - start < duration:
+        math.sqrt(math.random() * 1000)
+    return "CPU burn done"
+
+@app.route('/whoami')
+def whoami():
+    import os
+    return {
+        "instance": os.environ.get('WEBSITE_INSTANCE_ID', 'local-dev'),
+        "host": os.uname().nodename,
+        "time": datetime.now().isoformat()
+    }
