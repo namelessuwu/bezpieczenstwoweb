@@ -1,6 +1,6 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, BooleanField, SubmitField
-from wtforms.validators import ValidationError, DataRequired, Email, EqualTo, Length
+from wtforms import StringField, PasswordField, BooleanField, SubmitField, IntegerField
+from wtforms.validators import ValidationError, DataRequired, Email, EqualTo, Length, NumberRange
 from connector import fetch
 
 
@@ -31,7 +31,7 @@ class RegistrationForm(FlaskForm):
 class OrderForm(FlaskForm):
     address = StringField("Address", validators=[DataRequired()])
     zip_code = StringField("Zip-code", validators=[DataRequired()])
-    phone_number = StringField("Phone number", validators=[DataRequired()])
+    phone_number = IntegerField("Phone number", validators=[DataRequired(), NumberRange(min=0, max=2147483647, message="Enter a valid phone number")])
     submit = SubmitField("Order")
 
 
