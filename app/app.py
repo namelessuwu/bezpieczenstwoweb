@@ -6,6 +6,7 @@ from flask_login import LoginManager
 from flask_mail import Mail
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+import os
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -23,6 +24,11 @@ def load_user(user_id):
 @app.after_request
 def add_security_headers(response):
     response.headers['X-Frame-Options'] = 'DENY'
+    
+    instance_id = os.environ.get("WEBSITE_INSTANCE_ID", "local")
+    response.headers['X-Instance-ID'] = instance_id
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    
     return response
 
 import routes, errors
