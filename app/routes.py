@@ -5,10 +5,6 @@ from models import Product, User, Order
 from forms import LoginForm, RegistrationForm, OrderForm, SubmitForm
 from flask_login import current_user, login_user, logout_user, login_required
 from datetime import datetime
-import time
-import math
-import random
-
 
 @app.route('/')
 @app.route('/index')
@@ -178,21 +174,3 @@ def delete_user(user_id):
     else:
         abort(403)
 
-@app.route('/cpu-burn')
-def cpu_burn():
-    import time
-    import math
-    start = time.time()
-    duration = 1  # czas w sekundach
-    while time.time() - start < duration:
-        math.sqrt(random.random() * 1000)
-    return "CPU burn done"
-
-@app.route('/whoami')
-def whoami():
-    import os
-    return {
-        "instance": os.environ.get('WEBSITE_INSTANCE_ID', 'local-dev'),
-        "host": os.uname().nodename,
-        "time": datetime.now().isoformat()
-    }
