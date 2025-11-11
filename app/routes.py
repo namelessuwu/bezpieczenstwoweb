@@ -5,6 +5,9 @@ from models import Product, User, Order
 from forms import LoginForm, RegistrationForm, OrderForm, SubmitForm
 from flask_login import current_user, login_user, logout_user, login_required
 from datetime import datetime
+import time
+import math
+import random
 
 
 @app.route('/')
@@ -182,7 +185,7 @@ def cpu_burn():
     start = time.time()
     duration = 1  # czas w sekundach
     while time.time() - start < duration:
-        math.sqrt(math.random() * 1000)
+        math.sqrt(random.random() * 1000)
     return "CPU burn done"
 
 @app.route('/whoami')
